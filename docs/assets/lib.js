@@ -259,7 +259,7 @@ function renderMatch(M, P, F) {
   const bad = P.problems.map(p => `<div class="pt bad"><b>${p.title}${p.recurring ? ' <span class="pill warn">recurring</span>' : ''}</b><span class="e">${p.evidence}</span></div>`).join('') || '<div class="pt good"><b>No major habit problems this game.</b></div>';
   const good = P.positives.map(p => `<div class="pt good"><b>${p.title}</b><span class="e">${p.evidence}</span></div>`).join('') || '<span class="e">Nothing clearly above average this game.</span>';
   const nxt = P.next.map(n => `<div class="pt next"><b>${n.text}${n.recurring ? ' <span class="pill warn">recurring focus</span>' : ''}</b></div>`).join('') || '<span class="e">Keep doing what you did.</span>';
-  kp.innerHTML = `<div class="cols"><div class="card"><h3>Work on</h3>${bad}</div><div class="card"><h3>What went well</h3>${good}</div><div class="card"><h3>Try next game</h3>${nxt}
+  kp.innerHTML = `<div class="stack"><div class="card"><h3>Work on</h3>${bad}</div><div class="card"><h3>What went well</h3>${good}</div><div class="card"><h3>Try next game</h3>${nxt}
    <div class="sub" style="margin-top:8px">Your current focus areas: ${F.length ? F.map(f => `<span class="pill info">${f.title}</span>`).join(' ') : 'none yet'}</div></div></div>`;
 
   // Charts: each function draws into the container with the matching id in the page template (see pages.py).
@@ -309,7 +309,7 @@ function communityPanel(c, C) {
   c.innerHTML = `<div class="sub">Statlocker snapshot from ${C.captured}: ${C.rank.in_game}; Statlocker rates you ${C.rank.statlocker} (${C.rank.pp} PP).
     Laning at 9:00: ${C.laning.wins} wins / ${C.laning.draws} draws / ${C.laning.losses} losses over ${C.laning.lanes} lanes.</div>
     <div class="cols"><div class="card"><h3>Strengths vs the community</h3><div id="cm-good"></div></div><div class="card"><h3>Weaknesses vs the community</h3><div id="cm-bad"></div></div></div>
-    <div class="card" style="margin-top:12px"><h3>What these suggest</h3>${C.strengths.map(hint).join('')}${C.weaknesses.map(hint).join('')}
+    <div class="card" style="margin-top:12px"><h3>What these suggest</h3><div class="suggest">${C.strengths.map(hint).join('')}${C.weaknesses.map(hint).join('')}</div>
     <div class="sub" style="margin:8px 0 0">${C.meta.sample}. ${C.meta.caveat}</div></div>`;
   pctBars($('cm-good'), C.strengths, true); pctBars($('cm-bad'), C.weaknesses, false);
 }
@@ -359,8 +359,8 @@ function renderOverview(O) {
   // Habit-by-game grid: red = flagged that game, green = fine, grey = not measurable.
   const HID = T.map(t => t.id);
   tbl($('matrix'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.calib ? '#' + g.calib : g.id}</a>`, l: 1 }, { h: 'Result', f: g => `<span class="pill ${g.win ? 'win' : 'loss'}">${g.win ? 'W' : 'L'}</span>` }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'KDA', f: g => g.kda.join('/') },
-    ...HID.map(id => ({ h: HABIT_SHORT[id], f: g => { const r = g.habits[id]; return r.flag ? 'flag' : (r.value == null ? 'n/a' : 'ok'); }, cls: g => { const r = g.habits[id]; return r.flag ? 'c-bad' : (r.value == null ? 'c-na' : 'c-good'); } })),
-    { h: 'Flags', f: g => HID.filter(id => g.habits[id].flag).length }], G);
+    ...HID.map(id => ({ h: HABIT_SHORT[id], f: g => { const r = g.habits[id]; return r.flag ? '&#10005;' : (r.value == null ? '&ndash;' : '&#10003;'); }, cls: g => { const r = g.habits[id]; return r.flag ? 'c-bad' : (r.value == null ? 'c-na' : 'c-good'); } })),
+    { h: 'Flags', f: g => HID.filter(id => g.habits[id].flag).length }], G).classList.add('compact');
 
   // games table
   tbl($('games'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.id}</a>`, l: 1 }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'Lane', f: g => g.lane, l: 1 }, { h: 'Result', f: g => `${g.win ? 'W' : 'L'} ${mm(g.dur)}` }, { h: 'KDA', f: g => g.kda.join('/') },
