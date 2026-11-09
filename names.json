@@ -1,0 +1,9 @@
+{
+  "_help": "Fill in as you learn them. Items may be a plain name or {\"name\": \"...\", \"tags\": [\"bullet_resist\"]} - tagged items are listed under counter items in the report.",
+  "heroes": {
+    "81": "Celeste",
+    "66": "Victor",
+    "13": "Haze"
+  },
+  "items": {}
+}
