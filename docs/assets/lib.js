@@ -38,6 +38,34 @@ function themeFrom(name) {
   };
   im.src = (window.ASSET_BASE || '') + e.icon;
 }
+/* Habit check: one gauge per tracked habit. The bar always runs worse (left) to better (right); the shaded zone is where the
+   habit gets flagged, the marker is this game. Hover a row for the evidence. */
+const GAUGE = {  // id: [short label, axis min, axis max, formatter]
+  deaths: ['Deaths vs teammates', -4, 6, v => (v > 0 ? '+' : '') + v.toFixed(1) + ' deaths'],
+  early: ['Lane-phase deaths', 0, 6, v => v + ' before 10:00'],
+  first: ['First to die in fights', -2, 4, v => (Math.round(v) > 0 ? '+' : '') + (Math.round(v) || 0) + ' vs mates'],
+  resist: ['Resist owned at 20:00', 0, 25, v => v.toFixed(0) + '%'],
+  t3: ['First tier-3 item', -120, 300, v => (v > 0 ? '+' : '') + Math.round(v) + 's vs enemy'],
+  lane: ['Lane', -2.5, 2, v => (v > 0 ? '+' : '') + v.toFixed(1) + ' sd'],
+  souls: ['Souls this game', -2.5, 2.5, v => (v > 0 ? '+' : '') + v.toFixed(1) + ' sd'],
+};
+function habitGauges(c, P) {
+  const lowerBetter = { deaths: 1, early: 1, first: 1, t3: 1 };
+  const pos = (id, v) => { const g = GAUGE[id], p = Math.max(0, Math.min(1, (v - g[1]) / (g[2] - g[1]))); return (lowerBetter[id] ? 1 - p : p) * 100; };
+  c.innerHTML = `<div class="gauges">${P.all.filter(r => GAUGE[r.id]).map(r => {
+    const g = GAUGE[r.id], th = P.rules[r.id].v, has = r.value != null, cls = !has ? 'na' : r.flag ? 'bad' : 'ok', tp = pos(r.id, th);
+    return `<div class="g ${cls}" title="${r.evidence ? r.evidence.replace(/"/g, '&quot;') : ''}"><div class="gh"><span>${g[0]}</span><b>${has ? g[3](r.value) : 'no data'}</b></div>
+      <div class="gt"><i class="zone" style="width:${tp.toFixed(1)}%"></i><i class="tick" style="left:${tp.toFixed(1)}%"></i>${has ? `<i class="mk" style="left:${pos(r.id, r.value).toFixed(1)}%"></i>` : ''}</div></div>`;
+  }).join('')}</div><div class="gkey"><span>worse</span><span>flag line</span><span>better</span></div>`;
+}
+/* Long "how to read this" paragraphs under headings fold away so the page leads with visuals; click to read them. */
+function foldSubs() {
+  document.querySelectorAll('main section > p.sub, main aside > p.sub').forEach(p => {
+    if (p.textContent.length < 70 || p.parentElement.closest('details')) return;
+    const d = document.createElement('details'); d.className = 'how'; d.innerHTML = '<summary>How to read this</summary>';
+    p.replaceWith(d); d.appendChild(p);
+  });
+}
 /* Hero portrait <img> for a hero name ('icon' = small round portrait, 'card' = large art). '' if there is no art for it. */
 function hi(name, kind) {
   const e = (window.HEROES || {})[name], k = kind || 'icon';
@@ -319,13 +347,16 @@ function renderMatch(M, P, F) {
 
   // Key points: three cards (work on / went well / try next). Evidence strings come from insights.py.
   const kp = $('points');
-  const bad = P.problems.map(p => `<div class="pt bad"><b>${p.title}${p.recurring ? ' <span class="pill warn">recurring</span>' : ''}</b><span class="e">${p.evidence}</span></div>`).join('') || '<div class="pt good"><b>No major habit problems this game.</b></div>';
-  const good = P.positives.map(p => `<div class="pt good"><b>${p.title}</b><span class="e">${p.evidence}</span></div>`).join('') || '<span class="e">Nothing clearly above average this game.</span>';
+  const bad = P.problems.map(p => `<div class="pt bad"><b>${p.title}${p.recurring ? ' <span class="pill warn">recurring</span>' : ''}</b><details class="why"><summary>Why</summary><span class="e">${p.evidence}</span></details></div>`).join('') || '<div class="pt good"><b>No major habit problems this game.</b></div>';
+  const good = P.positives.map(p => `<div class="pt good"><b>${p.title}</b><details class="why"><summary>Why</summary><span class="e">${p.evidence}</span></details></div>`).join('') || '<span class="e">Nothing clearly above average this game.</span>';
   const nxt = P.next.map(n => `<div class="pt next"><b>${n.text}${n.recurring ? ' <span class="pill warn">recurring focus</span>' : ''}</b></div>`).join('') || '<span class="e">Keep doing what you did.</span>';
   kp.innerHTML = `<div class="stack"><div class="card"><h3>Work on</h3>${bad}</div><div class="card"><h3>What went well</h3>${good}</div><div class="card"><h3>Try next game</h3>${nxt}
    <div class="sub" style="margin-top:8px">Your current focus areas: ${F.length ? F.map(f => `<span class="pill info">${f.title}</span>`).join(' ') : 'none yet'}</div></div></div>`;
 
+  habitGauges($('gauges'), P);
+
   // Charts: each function draws into the container with the matching id in the page template (see pages.py).
+  setTimeout(foldSubs, 0);
   const draw = () => {
     ['c-timeline', 'c-lane1', 'c-lane2', 'c-dmg1', 'c-dmg2', 'c-items', 'c-souls', 'c-map'].forEach(id => ($(id).innerHTML = ''));
     timeline($('c-timeline'), M);
@@ -409,7 +440,8 @@ function renderOverview(O) {
     <div class="sub" style="margin:0 0 6px"><span class="pill warn">flagged in ${f.flagged} of your last ${f.of} games</span></div>
     <div id="fs-${f.id}"></div>
     <div class="sub" style="margin:4px 0">Target: ${f.target}</div>
-    ${f.advice.slice(0, 2).map(a => `<div class="pt next"><b style="font-weight:500">${a}</b></div>`).join('')}
+    <div class="pt next"><b style="font-weight:500">${f.advice[0]}</b></div>
+    ${f.advice.length > 1 ? `<details class="why"><summary>More tips</summary>${f.advice.slice(1, 3).map(a => `<div class="pt next"><b style="font-weight:500">${a}</b></div>`).join('')}</details>` : ''}
     <div class="sub">Examples: ${f.examples.map(e => `<a href="matches/${e.id}.html">${e.id}</a>`).join(', ')}</div></div>`).join('') || '<div class="card">No recurring problems flagged yet.</div>';
   F.slice(0, 3).forEach(f => { const t = T.find(x => x.id == f.id); spark($('fs-' + f.id), t.series, { w: 330, h: 54, labels: G.map(g => '#' + g.id), thresh: O.thresholds[f.id], bad: v => O.flagfn[f.id](v) }); });
 
@@ -437,6 +469,7 @@ function renderOverview(O) {
     ...(O.community ? [{ h: 'Match rank', f: g => g.sl ? g.sl.mvp + '/12' : '-' }, { h: 'Grade', f: g => g.sl ? g.sl.grade : '-' }, { h: 'MMR', f: g => g.sl && g.sl.mmr != null ? (g.sl.mmr > 0 ? '+' : '') + g.sl.mmr : '-' }] : [])], G);
   if (O.community) communityPanel($('community'), O.community);
 
+  setTimeout(foldSubs, 0);
   seasonMap($('c-seasonmap'), O.deaths);
   const ed = O.deaths.filter(d => d.side === 'enemy').length;
   $('seasonmap-note').textContent = `${ed} of ${O.deaths.length} deaths (${pct(ed / Math.max(1, O.deaths.length))}) happened in enemy territory; hover a dot for the game, time and killer.`;

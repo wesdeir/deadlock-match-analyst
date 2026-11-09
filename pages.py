@@ -33,6 +33,7 @@ MATCH_BODY = """
 <div id="points"></div></aside>
 <div class="stage">
 <section id="s-board"><h2>The teams</h2><div class="teams" id="teams"></div></section>
+<section id="s-habits"><h2>Habit check</h2><div class="card" id="gauges"></div></section>
 <section id="s-timeline"><h2>What happened</h2><p class="sub">Team net-worth gap over time. Fights are shaded (green = your team won, red = lost); below: your deaths and kills, objectives, mid boss and resist-item buys. Hover for details.</p>
 <div class="card" id="c-timeline"></div></section>
 <section id="s-lane"><h2>Lane</h2><div class="cols"><div class="card" id="c-lane1"></div><div class="card" id="c-lane2"></div></div></section>
@@ -49,7 +50,7 @@ MATCH_BODY = """
 <details><summary>Objectives</summary><div class="card" id="t-obj"></div></details></section>
 </div></div>
 """
-MATCH_CHIPS = [["s-points", "Key points"], ["s-board", "Teams"], ["s-timeline", "Timeline"], ["s-lane", "Lane"], ["s-deaths", "Deaths"], ["s-fights", "Fights"],
+MATCH_CHIPS = [["s-points", "Key points"], ["s-board", "Teams"], ["s-habits", "Habit check"], ["s-timeline", "Timeline"], ["s-lane", "Lane"], ["s-deaths", "Deaths"], ["s-fights", "Fights"],
                ["s-damage", "Damage"], ["s-items", "Items"], ["s-economy", "Economy"], ["s-data", "All data"]]
 
 OVERVIEW_BODY = """
@@ -85,7 +86,7 @@ def nav_games(records):
 def match_page(rec, points, focus, records, brief, sl=None):
     """Write docs/matches/<id>.html for one match."""
     rec = dict(rec, sl=sl)  # Statlocker numbers for this game (or None)
-    script = (f"const M={_dump(rec)},P={_dump(points)},F={_dump(focus)};"
+    script = (f"const M={_dump(rec)},P={_dump(dict(points, rules=insights.rules()))},F={_dump(focus)};"
               f"renderNav({{page:'match',current:{rec['id']},games:{_dump(nav_games(records))},chips:{_dump(MATCH_CHIPS)},brief:{_dump(brief)}}});renderMatch(M,P,F);")
     out = DOCS / "matches" / f"{rec['id']}.html"
     out.parent.mkdir(parents=True, exist_ok=True)

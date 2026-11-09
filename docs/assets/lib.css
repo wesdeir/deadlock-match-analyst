@@ -133,3 +133,22 @@ h1,h2,h3{text-wrap:balance}
 .skip:focus{top:8px}
 a,button,summary{touch-action:manipulation}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+
+/* ---- habit gauges: a bar per habit, worse on the left, flag zone shaded, marker = this game */
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px 36px}
+.g .gh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px}
+.g .gh span{font-weight:600}.g .gh b{font:700 15px var(--display)}
+.g.ok .gh b{color:var(--good)}.g.bad .gh b{color:var(--bad)}.g.na .gh b{color:var(--mute);font-weight:400}
+.gt{position:relative;height:12px;border-radius:6px;background:var(--panel2)}
+.gt .zone{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px;background:var(--soft-loss)}
+.gt .tick{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--g2)}
+.gt .mk{position:absolute;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:3px solid var(--panel);background:var(--g1);box-shadow:0 0 0 1px var(--g2)}
+.g.ok .mk{background:var(--good)}.g.bad .mk{background:var(--bad)}
+.gkey{display:flex;justify-content:space-between;margin-top:12px;color:var(--mute);font-size:12px}
+
+/* ---- folded explanations and evidence */
+details.how{margin:0 0 10px}details.how>summary{display:inline-block;padding:2px 0;font:500 13px var(--display);color:var(--mute);cursor:pointer}
+details.how>p{margin:6px 0 0}
+.pt details.why{margin:2px 0 0}.pt details.why summary{display:inline;padding:0;font:500 12.5px var(--display);color:var(--mute)}
+.pt details.why[open] summary{display:block}
+.pt b{font-size:15px}
