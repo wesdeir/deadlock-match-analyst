@@ -9,6 +9,13 @@ function el(tag, attrs, parent, text) {
   if (parent) parent.appendChild(e);
   return e;
 }
+/* Width (in px) a chart should use: its container's inner width, so a viewBox pixel is a screen pixel and text stays 11px. */
+function fitW(c, fallback) { const w = c.clientWidth - 28; return w > 220 ? Math.round(w) : fallback; }
+/* Run `fn` (or reload the page) after the window width changes by 100px+ and settles, so charts re-fit their containers. */
+function onResize(fn) {
+  let w0 = innerWidth, t;
+  addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (Math.abs(innerWidth - w0) > 100) { w0 = innerWidth; fn ? fn() : location.reload(); } }, 250); });
+}
 /* Create an HTML element with attributes and inner HTML, appended to `parent`. */
 function h(tag, attrs, html, parent) {
   const e = document.createElement(tag);
@@ -38,7 +45,7 @@ const HABIT_SHORT = { deaths: 'Deaths', early: 'Lane deaths', first: 'First to d
 
 /* ---------------------------------------------------------------- per-match charts */
 function timeline(c, M) {
-  const W = 1100, H = 300, m = { l: 86, r: 10, t: 26, b: 70 };
+  const W = fitW(c, 1100), H = 300, m = { l: 86, r: 10, t: 26, b: 70 };
   const s = svg(c, W, H, 'wide'), dur = M.dur;
   const lim = Math.max(1000, ...M.nw_curve.map(p => Math.abs(p.gap)));
   const x = sc(0, dur, m.l, W - m.r), y = sc(-lim, lim, H - m.b, m.t);
@@ -60,28 +67,28 @@ function timeline(c, M) {
   for (const t of M.kills) { const n = el('circle', { cx: x(t), cy: rows.kill, r: 4, fill: 'var(--accent)' }, s); tip(n, 'Kill ' + mm(t)); }
   for (const o of M.objectives) { const n = el('rect', { x: x(o.t) - 3, y: rows.obj - 4, width: 7, height: 7, fill: o.mine ? 'var(--win)' : 'var(--loss)' }, s); tip(n, `${mm(o.t)} ${o.name} ${o.mine ? 'destroyed by your team' : 'lost'}`); }
   for (const b of M.midboss) { const n = el('path', { d: `M${x(b.t)} ${m.t + 2} l6 6 l-6 6 l-6 -6 z`, fill: b.mine ? 'var(--win)' : 'var(--loss)' }, s); tip(n, `Mid boss claimed by ${b.mine ? 'your team' : 'the enemy'} at ${mm(b.t)}`); }
-  for (const i of M.items.filter(i => i.tags.some(t => /^(spirit|bullet)_resist=/.test(t)))) { const n = el('rect', { x: x(i.t) - 4, y: rows.item - 4, width: 8, height: 8, fill: 'var(--ability)' }, s); tip(n, `${mm(i.t)} bought ${i.name} [${i.tags.join(', ')}]`); }
-  legend(c, [['var(--win)', 'won fight / your objective / your mid boss'], ['var(--loss)', 'lost fight / lost objective / enemy mid boss'], ['var(--ink)', 'your death'], ['var(--accent)', 'your kill'], ['var(--ability)', 'resist item bought']]);
+  for (const i of M.items.filter(i => i.tags.some(t => /^(spirit|bullet)_resist=/.test(t)))) { const n = el('rect', { x: x(i.t) - 4, y: rows.item - 4, width: 8, height: 8, fill: 'var(--ink)' }, s); tip(n, `${mm(i.t)} bought ${i.name} [${i.tags.join(', ')}]`); }
+  legend(c, [['var(--win)', 'won fight / your objective / your mid boss'], ['var(--loss)', 'lost fight / lost objective / enemy mid boss'], ['var(--ink)', 'your death'], ['var(--accent)', 'your kill'], ['var(--ink)', 'resist item bought']]);
 }
 
 /* Lane chart: your net worth against your lane partner and the lane opponents. */
 function laneNW(c, M) {
-  const W = 540, H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H);
+  const W = fitW(c, 540), H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H);
   const T = M.nw_curve.filter(p => p.t <= M.dur), all = T.flatMap(p => [p.me, ...p.opp, ...p.mate]);
   const x = sc(0, M.dur, m.l, W - m.r), y = sc(0, Math.max(...all), H - m.b, m.t);
   el('text', { x: m.l, y: 14 }, s, 'Net worth in lane: you vs lane opponents').style.fontWeight = 600;
   for (let t = 0; t <= M.dur; t += 600) el('text', { x: x(t), y: H - 6, 'text-anchor': 'middle', class: 'mute' }, s, Math.round(t / 60) + 'm');
   el('text', { x: m.l - 6, y: y(Math.max(...all)) + 4, 'text-anchor': 'end', class: 'mute' }, s, k(Math.max(...all)));
   const line = (vals, col, w, dash, name) => { const p = el('polyline', { points: T.map((q, i) => x(q.t) + ',' + y(vals[i])).join(' '), fill: 'none', stroke: col, 'stroke-width': w, 'stroke-dasharray': dash || '' }, s); tip(p, name); };
-  M.lane_opp.forEach((n, j) => line(T.map(p => p.opp[j]), j ? 'var(--bullet)' : 'var(--loss)', 1.6, j ? '4 3' : '', 'Opponent ' + n));
-  M.lane_mate.forEach((n, j) => line(T.map(p => p.mate[j]), 'var(--even)', 1.6, '2 3', 'Lane partner ' + n));
+  M.lane_opp.forEach((n, j) => line(T.map(p => p.opp[j]), j ? 'var(--mute)' : 'var(--ink)', 1.6, j ? '4 3' : '', 'Opponent ' + n));
+  M.lane_mate.forEach((n, j) => line(T.map(p => p.mate[j]), 'var(--g3)', 1.8, '2 3', 'Lane partner ' + n));
   line(T.map(p => p.me), 'var(--accent)', 2.6, '', 'You');
-  legend(c, [['var(--accent)', 'you'], ['var(--even)', 'lane partner'], ['var(--loss)', 'opponent 1: ' + (M.lane_opp[0] || '-')], ['var(--bullet)', 'opponent 2: ' + (M.lane_opp[1] || '-')]]);
+  legend(c, [['var(--accent)', 'you'], ['var(--g3)', 'lane partner'], ['var(--ink)', 'opponent 1: ' + (M.lane_opp[0] || '-')], ['var(--mute)', 'opponent 2: ' + (M.lane_opp[1] || '-')]]);
 }
 
 /* Lane chart: your duo's lead over the enemy duo, against the typical lead for this hero (mean and 1 sd band). */
 function laneDuo(c, M) {
-  const W = 540, H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H), T = M.lane_curve;
+  const W = fitW(c, 540), H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H), T = M.lane_curve;
   el('text', { x: m.l, y: 14 }, s, 'Your duo lead vs a typical ' + M.hero + ' duo').style.fontWeight = 600;
   if (!T.length) { el('text', { x: m.l, y: 60, class: 'mute' }, s, 'no benchmark data for this hero/lane'); return; }
   const lo = Math.min(...T.map(p => Math.min(p.mine, p.mean - p.sd))), hi = Math.max(...T.map(p => Math.max(p.mine, p.mean + p.sd)));
@@ -104,7 +111,7 @@ function mapSvg(container, S, labels) {
   const s = svg(container, S, S);
   const id = 'mf' + Math.random().toString(36).slice(2, 7), defs = el('defs', {}, s);
   const f = el('filter', { id, 'color-interpolation-filters': 'sRGB', x: 0, y: 0, width: 1, height: 1 }, defs);
-  el('feColorMatrix', { type: 'matrix', values: '0 0 0 0 0.42  0 0 0 0 0.45  0 0 0 0 0.56  -0.95 0 0 0 0.95' }, f);
+  el('feColorMatrix', { type: 'matrix', values: '0 0 0 0 0.34  0 0 0 0 0.34  0 0 0 0 0.38  -0.95 0 0 0 0.95' }, f);
   el('rect', { x: 0, y: 0, width: S, height: S, fill: '#0b0b11', stroke: 'var(--line)' }, s);
   const im = el('image', { href: (window.ASSET_BASE || '') + 'assets/map.png', x: 0, y: 0, width: S, height: S, filter: `url(#${id})` }, s);
   im.addEventListener('error', () => im.setAttribute('href', MAP_REMOTE), { once: true });
@@ -114,7 +121,7 @@ function mapSvg(container, S, labels) {
   return s;
 }
 function deathMap(c, M) {
-  const S = 520, s = mapSvg(c, S, M.team === 1 ? ['YOUR BASE', 'ENEMY BASE'] : ['ENEMY BASE', 'YOUR BASE']);
+  const S = Math.min(520, fitW(c, 520)), s = mapSvg(c, S, M.team === 1 ? ['YOUR BASE', 'ENEMY BASE'] : ['ENEMY BASE', 'YOUR BASE']);
   M.deaths.forEach((d, i) => {
     const cx = mapX(d.x, S), cy = mapY(d.y, S);
     const n = el('circle', { cx, cy, r: 10, fill: d.side === 'enemy' ? 'var(--loss)' : 'var(--brand)', 'fill-opacity': .92, stroke: d.caught ? '#fff' : 'rgba(0,0,0,.5)', 'stroke-width': d.caught ? 2 : 1 }, s);
@@ -124,7 +131,7 @@ function deathMap(c, M) {
   legend(c, [['var(--loss)', 'died in enemy territory'], ['var(--brand)', 'died on your half'], ['#fff', 'white ring = alone / outnumbered']]);
 }
 function seasonMap(c, deaths) {
-  const S = 560, s = mapSvg(c, S, ['TEAM 1 BASE (top)', 'TEAM 0 BASE (bottom)']);
+  const S = Math.min(560, fitW(c, 560)), s = mapSvg(c, S, ['TEAM 1 BASE (top)', 'TEAM 0 BASE (bottom)']);
   for (const d of deaths) {
     const n = el('circle', { cx: mapX(d.x, S), cy: mapY(d.y, S), r: 8, fill: d.side === 'enemy' ? 'var(--loss)' : 'var(--brand)', 'fill-opacity': .42, stroke: 'none' }, s);
     tip(n, `${d.game} ${mm(d.t)} - ${d.killer}${d.side === 'enemy' ? ' (enemy half)' : ' (your half)'}`);
@@ -134,7 +141,7 @@ function seasonMap(c, deaths) {
 
 /* Stacked bars: damage taken from each enemy, split into bullet / ability / melee. */
 function dmgBars(c, M) {
-  const W = 540, rowH = 26, m = { l: 90, r: 70, t: 22, b: 6 }, rows = M.dmg, H = m.t + rows.length * rowH + m.b, s = svg(c, W, H);
+  const W = fitW(c, 540), rowH = 26, m = { l: 90, r: 70, t: 22, b: 6 }, rows = M.dmg, H = m.t + rows.length * rowH + m.b, s = svg(c, W, H);
   const mx = Math.max(...rows.map(d => d.bullet + d.ability + d.melee), 1), x = sc(0, mx, m.l, W - m.r);
   el('text', { x: 4, y: 13 }, s, 'Damage you took, by enemy and type').style.fontWeight = 600;
   rows.forEach((d, i) => {
@@ -151,7 +158,7 @@ function dmgBars(c, M) {
 
 /* Bars of damage taken per interval (bullet vs other) with step lines for the resist you owned (right axis). */
 function dmgOverTime(c, M) {
-  const W = 540, H = 240, m = { l: 48, r: 44, t: 24, b: 22 }, s = svg(c, W, H), I = M.dmg_intervals;
+  const W = fitW(c, 540), H = 240, m = { l: 48, r: 44, t: 24, b: 22 }, s = svg(c, W, H), I = M.dmg_intervals;
   el('text', { x: m.l, y: 14 }, s, 'Damage taken per interval and the resist you owned').style.fontWeight = 600;
   if (!I.length) return;
   const mx = Math.max(...I.map(i => i.total)), x = sc(0, M.dur, m.l, W - m.r), y = sc(0, mx, H - m.b, m.t);
@@ -163,29 +170,29 @@ function dmgOverTime(c, M) {
     const a = el('rect', { x: x0, y: y(i.other) - hb, width: w, height: hb, fill: 'var(--bullet)' }, s); tip(a, `${mm(i.t)}: bullet ${num(i.bullet)}`);
     const b = el('rect', { x: x0, y: y(i.other), width: w, height: ho, fill: 'var(--ability)' }, s); tip(b, `${mm(i.t)}: ability/other ${num(i.other)}`);
   }
-  const step = (key, col, name) => {
+  const step = (key, col, name, dash) => {
     const pts = []; let last = 0; pts.push(`${x(0)},${yr(0)}`);
     for (const i of I) { pts.push(`${x(i.t)},${yr(last)}`); pts.push(`${x(i.t)},${yr(i[key])}`); last = i[key]; }
-    el('polyline', { points: pts.join(' '), fill: 'none', stroke: col, 'stroke-width': 2.4 }, s).appendChild(document.createElementNS(NS, 'title')).textContent = name;
+    el('polyline', { points: pts.join(' '), fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-dasharray': dash || '' }, s).appendChild(document.createElementNS(NS, 'title')).textContent = name;
   };
-  step('res_s', 'var(--ink)', 'Spirit resist owned (%)'); step('res_b', 'var(--loss)', 'Bullet resist owned (%)');
+  step('res_s', 'var(--ink)', 'Spirit resist owned (%)'); step('res_b', 'var(--ink)', 'Bullet resist owned (%)', '5 4');
   for (let t = 0; t <= M.dur; t += 600) el('text', { x: x(t), y: H - 6, 'text-anchor': 'middle', class: 'mute' }, s, Math.round(t / 60) + 'm');
   el('text', { x: W - m.r + 4, y: yr(maxR) + 4, class: 'mute' }, s, maxR + '%'); el('text', { x: m.l - 6, y: y(mx) + 4, 'text-anchor': 'end', class: 'mute' }, s, k(mx));
-  legend(c, [['var(--bullet)', 'bullet damage'], ['var(--ability)', 'ability / other damage'], ['var(--ink)', 'spirit resist owned % (right axis)'], ['var(--loss)', 'bullet resist owned % (right axis)']]);
+  legend(c, [['var(--bullet)', 'bullet damage'], ['var(--ability)', 'ability / other damage'], ['var(--ink)', 'spirit resist owned % (right axis, solid)'], ['var(--g1)', 'bullet resist owned % (dashed)']]);
 }
 
 /* Swimlanes of tier-3+ item purchases: you first, then each enemy. Resist items are purple. */
 function itemLanes(c, M) {
   const names = ['You', ...Object.keys(M.enemy_t3)];
-  const W = 1100, rowH = 26, m = { l: 90, r: 10, t: 22, b: 22 }, H = m.t + names.length * rowH + m.b, s = svg(c, W, H, 'wide'), x = sc(0, M.dur, m.l, W - m.r);
+  const W = fitW(c, 1100), rowH = 26, m = { l: 90, r: 10, t: 22, b: 22 }, H = m.t + names.length * rowH + m.b, s = svg(c, W, H, 'wide'), x = sc(0, M.dur, m.l, W - m.r);
   for (let t = 0; t <= M.dur; t += 300) { el('line', { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, class: 'axis' }, s); el('text', { x: x(t), y: H - 6, 'text-anchor': 'middle', class: 'mute' }, s, Math.round(t / 60) + 'm'); }
-  el('text', { x: 4, y: 13 }, s, 'Tier-3+ item purchases (hover for names). Purple = a resist item.').style.fontWeight = 600;
+  el('text', { x: 4, y: 13 }, s, 'Tier-3+ item purchases (hover for names). White = a resist item.').style.fontWeight = 600;
   names.forEach((n, i) => {
     const y0 = m.t + i * rowH; el('text', { x: m.l - 6, y: y0 + 16, 'text-anchor': 'end' }, s, n).style.fontWeight = i ? 400 : 700;
     const its = i ? M.enemy_t3[n] : M.items.filter(q => q.tier >= 3 && q.slot !== 'ability' && !q.sold).map(q => ({ t: q.t, name: q.name, tags: q.tags }));
     for (const q of its) {
       const res = (q.tags || []).some(t => /^(spirit|bullet)_resist=/.test(t));
-      const d = el('rect', { x: x(q.t) - 4, y: y0 + 5, width: 9, height: 14, rx: 2, fill: res ? 'var(--ability)' : (i ? 'var(--even)' : 'var(--accent)') }, s); tip(d, `${mm(q.t)} ${q.name}${(q.tags || []).length ? ' [' + q.tags.join(', ') + ']' : ''}`);
+      const d = el('rect', { x: x(q.t) - 4, y: y0 + 5, width: 9, height: 14, rx: 2, fill: res ? 'var(--ink)' : (i ? 'var(--g3)' : 'var(--accent)') }, s); tip(d, `${mm(q.t)} ${q.name}${(q.tags || []).length ? ' [' + q.tags.join(', ') + ']' : ''}`);
     }
   });
 }
@@ -193,17 +200,17 @@ function itemLanes(c, M) {
 /* Grouped bars: souls by source for you, the teammate average and the lane-opponent average. */
 function soulsBars(c, M) {
   const order = ['Neutrals', 'LaneCreeps', 'Players', 'Assists', 'Bosses', 'Treasure', 'Breakable', 'TeamBonus'];
-  const W = 540, rowH = 40, m = { l: 90, r: 50, t: 22, b: 6 }, H = m.t + order.length * rowH + m.b, s = svg(c, W, H);
+  const W = fitW(c, 540), rowH = 40, m = { l: 90, r: 50, t: 22, b: 6 }, H = m.t + order.length * rowH + m.b, s = svg(c, W, H);
   const mx = Math.max(...order.flatMap(o => [M.souls[o] || 0, M.souls_team_avg[o] || 0, M.souls_lane_opp_avg[o] || 0]), 1), x = sc(0, mx, m.l, W - m.r);
   el('text', { x: 4, y: 13 }, s, 'Souls by source: you vs teammates vs lane opponents').style.fontWeight = 600;
   order.forEach((o, i) => {
     const y0 = m.t + i * rowH; el('text', { x: m.l - 6, y: y0 + 22, 'text-anchor': 'end' }, s, o);
-    [[M.souls[o] || 0, 'var(--accent)', 'you'], [M.souls_team_avg[o] || 0, 'var(--even)', 'teammate avg'], [M.souls_lane_opp_avg[o] || 0, 'var(--loss)', 'lane opponent avg']].forEach(([v, col, n], j) => {
+    [[M.souls[o] || 0, 'var(--accent)', 'you'], [M.souls_team_avg[o] || 0, 'var(--even)', 'teammate avg'], [M.souls_lane_opp_avg[o] || 0, 'var(--ink)', 'lane opponent avg']].forEach(([v, col, n], j) => {
       const r = el('rect', { x: m.l, y: y0 + 3 + j * 11, width: Math.max(1, x(v) - x(0)), height: 9, fill: col }, s); tip(r, `${o} - ${n}: ${num(v)}`);
       if (j == 0) el('text', { x: x(v) + 5, y: y0 + 12, class: 'mute' }, s, num(v));
     });
   });
-  legend(c, [['var(--accent)', 'you'], ['var(--even)', 'teammate average'], ['var(--loss)', 'lane opponent average']]);
+  legend(c, [['var(--accent)', 'you'], ['var(--even)', 'teammate average'], ['var(--ink)', 'lane opponent average']]);
 }
 
 /* Build an HTML table from column definitions {h: header, f: value fn, l: left-align, cls: cell class fn} and rows. */
@@ -227,28 +234,43 @@ function copyText(text, btn) {
   const fallback = () => { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } t.remove(); if (ok) flash('Copied!'); else manual(); };
   if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => flash('Copied!'), fallback); else fallback();
 }
+/* Top bar + pop-out menu. A waffle button opens a menu with: where to go, the sections of this page (the current one is
+   highlighted as you scroll) and the list of games. The menu closes on outside click, Escape or choosing a link. */
 function renderNav(o) {
   const pre = o.page === 'match' ? '' : 'matches/', home = (o.page === 'match' ? '../' : '') + 'index.html';
   const idx = o.games.findIndex(g => g.id === o.current), prev = o.games[idx - 1], next = o.games[idx + 1];
-  const opts = o.games.slice().reverse().map(g => `<option value="${g.id}" ${g.id === o.current ? 'selected' : ''}>${g.win ? 'W' : 'L'} · ${g.hero} · ${g.label}</option>`).join('');
   const latest = o.games[o.games.length - 1];
-  const nav = $('nav');
-  nav.innerHTML = `<div class="row"><span class="brand">Deadlock <b>// Analyst</b></span>
-   <div class="links"><a class="nl ${o.page === 'overview' ? 'on' : ''}" href="${home}">Overview</a><a class="nl ${o.current === (latest || {}).id ? 'on' : ''}" href="${pre}${latest ? latest.id : ''}.html">Latest match</a></div>
-   <span class="sp"></span>
-   ${o.page === 'match' ? `<div class="pn">${prev ? `<a href="${prev.id}.html" title="Previous game">&lsaquo; prev</a>` : ''}${next ? `<a href="${next.id}.html" title="Next game">next &rsaquo;</a>` : ''}</div>` : ''}
-   <select id="gamesel" title="Jump to a game"><option value="">Games&hellip;</option>${opts}</select>
-   <button class="cp" id="cpbtn" title="Copy a summary to paste into Claude">Copy for Claude</button></div>
-   ${o.chips && o.chips.length ? `<div class="chips">${o.chips.map(([id, t]) => `<a href="#${id}">${t}</a>`).join('')}</div>` : ''}`;
-  $('gamesel').onchange = (e) => { if (e.target.value) location.href = pre + e.target.value + '.html'; };
+  const dots = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => `<circle cx="${3 + c * 6}" cy="${3 + r * 6}" r="1.7"/>`)).join('');
+  const gameLinks = o.games.slice().reverse().map(g => `<a href="${pre}${g.id}.html" class="${g.id === o.current ? 'on' : ''}"><i class="dot ${g.win ? 'w' : 'l'}"></i>${g.hero}<span class="mute">${g.label}</span></a>`).join('');
+  const secLinks = (o.chips || []).map(([id, t]) => `<a href="#${id}" data-sec="${id}">${t}</a>`).join('');
+  $('nav').innerHTML = `<div class="row">
+    <button class="wf" id="wf" aria-label="Open navigation menu" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">${dots}</svg></button>
+    <a class="brand" href="${home}">Deadlock <b>// Analyst</b></a><span class="sp"></span>
+    ${o.page === 'match' ? `<div class="pn">${prev ? `<a href="${prev.id}.html" title="Previous game">&lsaquo; prev</a>` : ''}${next ? `<a href="${next.id}.html" title="Next game">next &rsaquo;</a>` : ''}</div>` : ''}
+    <button class="cp" id="cpbtn" title="Copy a summary to paste into Claude">Copy for Claude</button></div>
+    <nav class="menu" id="menu" hidden aria-label="Site navigation">
+      <h4>Go to</h4><a href="${home}" class="${o.page === 'overview' ? 'on' : ''}">Overview</a><a href="${pre}${latest ? latest.id : ''}.html" class="${latest && o.current === latest.id ? 'on' : ''}">Latest match</a>
+      ${secLinks ? `<h4>On this page</h4>${secLinks}` : ''}
+      <h4>Games</h4><div class="glist">${gameLinks}</div></nav>`;
+  const btn = $('wf'), menu = $('menu');
+  const setOpen = (open) => { menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+  btn.onclick = (e) => { e.stopPropagation(); setOpen(menu.hidden); };
+  menu.onclick = (e) => { if (e.target.closest('a')) setOpen(false); };
+  document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { setOpen(false); btn.focus(); } });
   $('cpbtn').onclick = (e) => copyText(o.brief, e.target);
+  // scrollspy: highlight the menu entry of the section currently in view
+  const links = [...menu.querySelectorAll('[data-sec]')];
+  if (links.length && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => entries.forEach(en => { if (en.isIntersecting) links.forEach(l => l.classList.toggle('on', l.dataset.sec === en.target.id)); }), { rootMargin: '-15% 0px -70% 0px' });
+    links.forEach(l => { const t = document.getElementById(l.dataset.sec); if (t) io.observe(t); });
+  }
 }
 
 /* ---------------------------------------------------------------- per-match page */
 function renderMatch(M, P, F) {
   const date = new Date(M.start * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-  $('head').innerHTML = `<div class="nav"><a href="../index.html">&larr; Overview</a></div>
-   <h1>${M.hero} <span class="pill ${M.win ? 'win' : 'loss'}">${M.win ? 'WIN' : 'LOSS'}</span> <span style="font-weight:400;color:var(--mute);font-size:15px">match ${M.id}${M.calib ? ' &middot; calibration game ' + M.calib : ''}</span></h1>
+  $('head').innerHTML = `<h1>${M.hero} <span class="pill ${M.win ? 'win' : 'loss'}">${M.win ? 'WIN' : 'LOSS'}</span> <span style="font-weight:400;color:var(--mute);font-size:15px">match ${M.id}${M.calib ? ' &middot; calibration game ' + M.calib : ''}</span></h1>
    <div class="sub">${date} &middot; ${mm(M.dur)} &middot; ${M.lane} lane with ${M.lane_mate.join(', ') || 'nobody'} vs ${M.lane_opp.join(' + ')}</div>
    <div class="kv"><div>KDA<b>${M.kda.join(' / ')}</b></div><div>Net worth<b>${num(M.nw)}</b></div><div>Souls / min<b>${num(M.kpi.spm)}</b></div><div>Last hits<b>${M.lh}</b></div>
    <div>Deaths vs teammates<b>${M.kpi.deaths} vs ${M.kpi.mate_deaths.toFixed(1)}</b></div><div>Time dead<b>${pct(M.kpi.dead_pct)} <span style="font-weight:400;color:var(--mute)">(mates ${pct(M.kpi.mate_dead_pct)})</span></b></div>
@@ -263,11 +285,16 @@ function renderMatch(M, P, F) {
    <div class="sub" style="margin-top:8px">Your current focus areas: ${F.length ? F.map(f => `<span class="pill info">${f.title}</span>`).join(' ') : 'none yet'}</div></div></div>`;
 
   // Charts: each function draws into the container with the matching id in the page template (see pages.py).
-  timeline($('c-timeline'), M);
-  laneNW($('c-lane1'), M); laneDuo($('c-lane2'), M);
-  dmgBars($('c-dmg1'), M); dmgOverTime($('c-dmg2'), M);
-  itemLanes($('c-items'), M);
-  soulsBars($('c-souls'), M); deathMap($('c-map'), M);
+  const draw = () => {
+    ['c-timeline', 'c-lane1', 'c-lane2', 'c-dmg1', 'c-dmg2', 'c-items', 'c-souls', 'c-map'].forEach(id => ($(id).innerHTML = ''));
+    timeline($('c-timeline'), M);
+    laneNW($('c-lane1'), M); laneDuo($('c-lane2'), M);
+    dmgBars($('c-dmg1'), M); dmgOverTime($('c-dmg2'), M);
+    itemLanes($('c-items'), M);
+    soulsBars($('c-souls'), M); deathMap($('c-map'), M);
+  };
+  draw();
+  onResize(draw);
 
   // Deaths table. Cells in 'Allies / enemies near' turn red when you were alone or outnumbered by 2+.
   tbl($('t-deaths'), [
@@ -293,7 +320,7 @@ function renderMatch(M, P, F) {
 /* ---------------------------------------------------------------- Statlocker community panel */
 // Percentile bars: every bar is "better than X% of the community" (50 = average). Strengths on the left card, weaknesses on the right.
 function pctBars(container, rows, good) {
-  const W = 540, rowH = 34, m = { l: 8, r: 8, t: 6, b: 6 }, H = m.t + rows.length * rowH + m.b, s = svg(container, W, H);
+  const W = fitW(container, 540), rowH = 34, m = { l: 8, r: 8, t: 6, b: 6 }, H = m.t + rows.length * rowH + m.b, s = svg(container, W, H);
   const x = sc(0, 100, m.l, W - m.r);
   el('line', { x1: x(50), x2: x(50), y1: m.t, y2: H - m.b, class: 'axis' }, s);
   rows.forEach((r, i) => {
@@ -329,6 +356,7 @@ function spark(container, vals, opts) {
 
 /* Fill in the season overview page from the data object O (games, insights, rules, deaths, community). */
 function renderOverview(O) {
+  onResize();
   const G = O.games, T = O.ov.trends, F = O.ov.focus;
   O.thresholds = {}; O.flagfn = {};
   for (const id in O.rules) { const r = O.rules[id]; O.thresholds[id] = r.v; O.flagfn[id] = r.op === '>=' ? (v => v >= r.v) : (v => v <= r.v); }
