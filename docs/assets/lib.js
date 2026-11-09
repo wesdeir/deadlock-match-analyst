@@ -16,6 +16,28 @@ function onResize(fn) {
   let w0 = innerWidth, t;
   addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (Math.abs(innerWidth - w0) > 100) { w0 = innerWidth; fn ? fn() : location.reload(); } }, 250); });
 }
+/* Page colour from the hero: average the portrait's most saturated pixels, clamp to a readable lightness, and use it as the accent
+   (replaces the default gold). Needs canvas pixel access, so it quietly keeps the gold when that is blocked (e.g. file:// pages). */
+function themeFrom(name) {
+  const e = (window.HEROES || {})[name]; if (!e || !e.icon) return;
+  const im = new Image(); im.onload = () => {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 32, 32);
+      const d = x.getImageData(0, 0, 32, 32).data; let R = 0, G = 0, B = 0, W = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 200) continue; const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]), w = (mx - mn) ** 2 + 1;
+        R += d[i] * w; G += d[i + 1] * w; B += d[i + 2] * w; W += w;
+      }
+      if (!W) return;
+      const r = R / W / 255, g = G / W / 255, b = B / W / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      let hh = 0; const dl = mx - mn;
+      if (dl) hh = mx === r ? ((g - b) / dl) % 6 : mx === g ? (b - r) / dl + 2 : (r - g) / dl + 4;
+      const H = Math.round((hh * 60 + 360) % 360), S = Math.round(Math.max(48, Math.min(80, (mx ? dl / mx : 0) * 100 + 10)));
+      const s = document.documentElement.style; s.setProperty('--gold', `hsl(${H} ${S}% 64%)`); s.setProperty('--soft-warn', `hsl(${H} ${S}% 64% / .16)`);
+    } catch (err) { /* keep the default gold */ }
+  };
+  im.src = (window.ASSET_BASE || '') + e.icon;
+}
 /* Hero portrait <img> for a hero name ('icon' = small round portrait, 'card' = large art). '' if there is no art for it. */
 function hi(name, kind) {
   const e = (window.HEROES || {})[name], k = kind || 'icon';
@@ -279,6 +301,7 @@ function renderNav(o) {
 
 /* ---------------------------------------------------------------- per-match page */
 function renderMatch(M, P, F) {
+  themeFrom(M.hero);
   const date = new Date(M.start * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
   $('head').innerHTML = `<div class="banner ${M.win ? 'win' : 'loss'}">${hi(M.hero, 'card')}
    <div class="bt"><div class="result">${M.win ? 'Victory' : 'Defeat'}</div><h1>${M.hero}</h1>
@@ -374,6 +397,8 @@ function spark(container, vals, opts) {
 function renderOverview(O) {
   onResize();
   const G = O.games, T = O.ov.trends, F = O.ov.focus;
+  const counts = {}; G.forEach(g => counts[g.hero] = (counts[g.hero] || 0) + 1);
+  themeFrom(Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0]);  // overview takes the colour of your most-played hero
   O.thresholds = {}; O.flagfn = {};
   for (const id in O.rules) { const r = O.rules[id]; O.thresholds[id] = r.v; O.flagfn[id] = r.op === '>=' ? (v => v >= r.v) : (v => v <= r.v); }
   const w = O.ov.outcome;

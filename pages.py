@@ -15,7 +15,7 @@ def _asset_version():
 
 # Shared page shell. {base} is the relative path back to docs/ ('' for index.html, '../' for match pages).
 HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d0d10">
-<title>{title}</title><link rel="stylesheet" href="{base}assets/lib.css?v={v}"></head><body><a class="skip" href="#main">Skip to content</a><header id="nav"></header><main id="main">"""
+<title>{title}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&display=swap"><link rel="stylesheet" href="{base}assets/lib.css?v={v}"></head><body><a class="skip" href="#main">Skip to content</a><header id="nav"></header><main id="main">"""
 TAIL = """</main><script src="{base}assets/heroes.js?v={v}"></script><script src="{base}assets/lib.js?v={v}"></script><script>window.ASSET_BASE="{base}";{script}</script></body></html>"""
 
 

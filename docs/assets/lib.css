@@ -10,6 +10,7 @@
   --bullet:var(--gold);--ability:var(--g2);--melee:var(--g3);  /* mid grey keeps the white resist lines readable on top of the bars */
   --soft-win:rgba(88,184,138,.14);--soft-loss:rgba(217,100,94,.16);--soft-warn:rgba(217,169,58,.16);--soft-info:rgba(255,255,255,.07);
   --display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,sans-serif;
+  --display2:"Big Shoulders Display","Bahnschrift","Arial Narrow",Impact,sans-serif;
   --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -17,8 +18,8 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scroll-padding-top:64p
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
 main{max-width:1840px;margin:0 auto;padding:14px clamp(12px,2vw,28px) 60px}
 a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--g3);text-underline-offset:3px}a:hover{color:var(--gold);text-decoration-color:var(--gold)}
-h1{font:700 34px/1.1 var(--display);letter-spacing:-.01em;margin:2px 0 6px}
-h2{font:600 19px/1.2 var(--display);margin:26px 0 8px;color:var(--ink)}
+h1{font:800 56px/.95 var(--display2);letter-spacing:.01em;margin:2px 0 8px}
+h2{font:800 30px/1 var(--display2);letter-spacing:.01em;margin:30px 0 8px;color:var(--ink)}
 h3{font:600 14px/1.2 var(--display);color:var(--ink);margin:0 0 10px}
 .sub{color:var(--mute);margin:0 0 12px;max-width:80ch}code{font-family:var(--mono);font-size:12px;background:var(--panel2);padding:1px 5px;border-radius:2px}
 
@@ -63,7 +64,7 @@ svg text{fill:var(--ink);font:11.5px var(--display);font-variant-numeric:tabular
 details{margin:8px 0}summary{cursor:pointer;font:600 14px var(--display);padding:8px 0;color:var(--mute)}summary:hover{color:var(--ink)}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px 24px;margin-top:14px;padding:12px 2px 0;border-top:1px solid var(--line)}
 .kv>div{font:12px var(--display);color:var(--mute);display:flex;flex-direction:column-reverse}
-.kv b{font:600 20px var(--display);color:var(--ink)}.kv b small{font:400 13px var(--display);color:var(--mute)}
+.kv b{font:800 30px/1.1 var(--display2);color:var(--ink)}.kv b small{font:400 13px var(--display);color:var(--mute)}
 .hero-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.mapwrap{max-width:520px;margin:0 auto}
 .card .sub{font-size:13px}
 
@@ -101,13 +102,13 @@ table.compact td:nth-child(-n+4),table.compact th:nth-child(-n+4){text-align:lef
 .menu .hi.icon{width:20px;height:20px}
 td .hn .hi.icon{width:22px;height:22px}
 
-/* ---- match header: the hero's own art, result, and a plain strip of numbers */
-.banner{position:relative;display:grid;grid-template-columns:auto 1fr;gap:4px 22px;align-items:end;padding:16px 20px 14px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--g3);border-radius:8px;overflow:hidden}
-.banner.win{border-left-color:var(--good)}.banner.loss{border-left-color:var(--bad)}
-.banner>.hi.card{grid-row:1;width:120px;height:120px;object-fit:cover;object-position:top;border-radius:8px;background:var(--panel2)}
-.banner .bt{grid-row:1;align-self:center}.banner .bt .sub{margin:0}
-.banner .result{font:600 14px var(--display)}.banner.win .result{color:var(--good)}.banner.loss .result{color:var(--bad)}
-.banner .kv{grid-column:1 / -1}
+/* ---- match header: the one bold moment. Hero art bleeds in from the left over a glow in the hero's own colour. */
+.banner{position:relative;display:grid;grid-template-columns:250px minmax(0,1fr);align-items:start;min-height:270px;background:radial-gradient(90% 150% at 0% 40%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 62%),var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.banner>.hi.card{grid-column:1;grid-row:1 / 3;width:250px;height:100%;min-height:270px;object-fit:cover;object-position:top;border-radius:0;background:none;-webkit-mask-image:linear-gradient(to right,#000 55%,transparent);mask-image:linear-gradient(to right,#000 55%,transparent)}
+.banner .bt{grid-column:2;grid-row:1;padding:20px 24px 0}.banner .bt .sub{margin:0}
+.banner .result{font:800 22px/1 var(--display2);letter-spacing:.06em;text-transform:uppercase}.banner.win .result{color:var(--good)}.banner.loss .result{color:var(--bad)}
+.banner .kv{grid-column:2;grid-row:2;margin:0;padding:16px 24px 20px;border-top:0}
+@media (max-width:700px){.banner{grid-template-columns:1fr;min-height:0}.banner>.hi.card{grid-column:1;grid-row:1;width:100%;height:170px;min-height:0;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}.banner .bt,.banner .kv{grid-column:1;grid-row:auto}h1{font-size:44px}}
 
 /* ---- teams panel: portrait, name, K/D/A and a net-worth bar per player */
 .teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px}
