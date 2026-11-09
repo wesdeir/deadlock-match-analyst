@@ -12,16 +12,19 @@ MIN_INTERVAL_S = 6.0  # minimum gap between live requests
 API = "https://api.deadlock-api.com"
 ASSETS = "https://assets.deadlock-api.com"
 
+# Time of our last live request, used to enforce MIN_INTERVAL_S between calls.
 _last_request = 0.0
 
 
 class RateLimited(Exception):
+    """Raised when the server asks us to wait longer than we are willing to (the caller should stop and retry later)."""
     def __init__(self, wait_s):
         super().__init__(f"rate limited, retry in ~{wait_s:.0f}s")
         self.wait_s = wait_s
 
 
 def _cache_path(url: str) -> Path:
+    """Disk-cache file for a URL: a readable prefix plus a hash so long query strings stay unique."""
     h = hashlib.sha1(url.encode()).hexdigest()[:16]
     tail = url.split("//", 1)[1].replace("/", "_").replace("?", "_").replace("&", "_")[:80]
     return CACHE_DIR / f"{tail}.{h}.json"
@@ -66,23 +69,28 @@ def get_json(url: str, refresh: bool = False, retries: int = 3):
 
 
 def match_history(account_id: int, refresh=False):
+    """All of a player's matches (small summary rows, newest included once the match is processed)."""
     return get_json(f"{API}/v1/players/{account_id}/match-history", refresh)
 
 
 def match_metadata(match_id: int, refresh=False):
+    """Full metadata for one match (players, items, deaths, damage matrix, paths). Heavily rate limited."""
     return get_json(f"{API}/v1/matches/{match_id}/metadata", refresh)
 
 
 def items_table(refresh=False):
+    """Item/ability name table (the API's /v1/assets mirror first, the assets server as a fallback)."""
     # api.deadlock-api.com serves the same assets under /v1/assets/ and is up when assets.deadlock-api.com is not
     return get_json(f"{API}/v1/assets/items", refresh) or get_json(f"{ASSETS}/v2/items", refresh)
 
 
 def heroes_table(refresh=False):
+    """Hero name table (same sources as items_table)."""
     return get_json(f"{API}/v1/assets/heroes", refresh) or get_json(f"{ASSETS}/v2/heroes", refresh)
 
 
 def generic_data(refresh=False):
+    """Misc. game data, e.g. lane names, via the /v1/assets mirror."""
     return get_json(f"{API}/v1/assets/generic-data", refresh)
 
 

@@ -28,6 +28,7 @@ FILES = [
 
 
 def refresh_gamedata():
+    """Re-download the game-file text dumps (hash-verified against GitHub's tree) and rebuild gamedata.json."""
     H = {"User-Agent": "deadlock-match-analyst/0.1 (personal; data files only)"}
     get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=60).read()
     tree = json.loads(get(f"https://api.github.com/repos/{REPO}/git/trees/master?recursive=1"))["tree"]
@@ -47,6 +48,7 @@ def refresh_gamedata():
 
 
 def main():
+    """Update history, download the newest missing season matches (rate-limit safe) and rebuild all pages and reports."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamedata", action="store_true")
     ap.add_argument("--max-fetch", type=int, default=2)
@@ -77,6 +79,7 @@ def main():
         except api.RateLimited as e:
             print("Stopping:", e)
             break
+    # Rebuild the dashboards, then both Markdown reports.
     for cmd in (["analyze.py", "all"], ["analyst.py", "--calibration"], ["analyst.py", "--calibration", "--brief"]):
         subprocess.run([sys.executable, str(HERE / cmd[0]), *cmd[1:]], check=False)
 

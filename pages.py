@@ -8,12 +8,14 @@ import insights
 
 DOCS = Path(__file__).parent / "docs"
 
+# Shared page shell. {base} is the relative path back to docs/ ('' for index.html, '../' for match pages).
 HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="{base}assets/lib.css"></head><body><header id="nav"></header><main>"""
 TAIL = """</main><script src="{base}assets/lib.js"></script><script>window.ASSET_BASE="{base}";{script}</script></body></html>"""
 
 
 def _dump(o):
+    """JSON for embedding in an inline <script> ('</' is escaped so it can't close the tag)."""
     # '</' must not appear inside an inline <script>
     return json.dumps(o, separators=(",", ":")).replace("</", "<\\/")
 
@@ -56,6 +58,7 @@ OVERVIEW_CHIPS = [["s-focus", "Focus"], ["s-improve", "Improving?"], ["s-pattern
 
 
 def nav_games(records):
+    """Short list of the season's games for the navigation bar and game picker."""
     out = []
     for m in records:
         label = f"#{m['calib']}" if m["calib"] else datetime.datetime.fromtimestamp(m["start"], datetime.timezone.utc).strftime("%m-%d")
@@ -64,6 +67,7 @@ def nav_games(records):
 
 
 def match_page(rec, points, focus, records, brief, sl=None):
+    """Write docs/matches/<id>.html for one match."""
     rec = dict(rec, sl=sl)  # Statlocker numbers for this game (or None)
     script = (f"const M={_dump(rec)},P={_dump(points)},F={_dump(focus)};"
               f"renderNav({{page:'match',current:{rec['id']},games:{_dump(nav_games(records))},chips:{_dump(MATCH_CHIPS)},brief:{_dump(brief)}}});renderMatch(M,P,F);")
@@ -74,6 +78,7 @@ def match_page(rec, points, focus, records, brief, sl=None):
 
 
 def overview_page(records, ov, brief, community=None, sl=None):
+    """Write docs/index.html (season overview)."""
     sl = sl or {}
     games = []
     for m in records:

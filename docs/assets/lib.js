@@ -1,6 +1,7 @@
 /* Shared chart + page helpers for the Deadlock dashboards (no dependencies, works from file://). */
 const NS = 'http://www.w3.org/2000/svg';
 const $ = (id) => document.getElementById(id);
+/* Create an SVG element with attributes (and optional text), appended to `parent`. */
 function el(tag, attrs, parent, text) {
   const e = document.createElementNS(NS, tag);
   for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
@@ -8,6 +9,7 @@ function el(tag, attrs, parent, text) {
   if (parent) parent.appendChild(e);
   return e;
 }
+/* Create an HTML element with attributes and inner HTML, appended to `parent`. */
 function h(tag, attrs, html, parent) {
   const e = document.createElement(tag);
   for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
@@ -21,11 +23,14 @@ const k = (v) => (v < 0 ? '-' : '') + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000
 const num = (v) => Math.round(v).toLocaleString();
 const pct = (v) => Math.round(v * 100) + '%';
 const sgn = (v, d = 1) => (v >= 0 ? '+' : '') + v.toFixed(d);
+/* Linear scale: maps the domain [d0, d1] onto the range [r0, r1]. */
 function sc(d0, d1, r0, r1) { return (v) => r0 + (v - d0) / ((d1 - d0) || 1) * (r1 - r0); }
+/* Create a responsive <svg> (viewBox w x h) inside a container. */
 function svg(container, w, hgt, cls) {
   const s = el('svg', { viewBox: `0 0 ${w} ${hgt}`, width: '100%', class: cls || '' }, container);
   return s;
 }
+/* Small colour legend under a chart: items are [colour, label] pairs. */
 function legend(container, items) {
   h('div', { class: 'legend' }, items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join(''), container);
 }
@@ -59,6 +64,7 @@ function timeline(c, M) {
   legend(c, [['var(--win)', 'won fight / your objective / your mid boss'], ['var(--loss)', 'lost fight / lost objective / enemy mid boss'], ['var(--ink)', 'your death'], ['var(--accent)', 'your kill'], ['var(--ability)', 'resist item bought']]);
 }
 
+/* Lane chart: your net worth against your lane partner and the lane opponents. */
 function laneNW(c, M) {
   const W = 540, H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H);
   const T = M.nw_curve.filter(p => p.t <= M.dur), all = T.flatMap(p => [p.me, ...p.opp, ...p.mate]);
@@ -73,6 +79,7 @@ function laneNW(c, M) {
   legend(c, [['var(--accent)', 'you'], ['var(--even)', 'lane partner'], ['var(--loss)', 'opponent 1: ' + (M.lane_opp[0] || '-')], ['var(--bullet)', 'opponent 2: ' + (M.lane_opp[1] || '-')]]);
 }
 
+/* Lane chart: your duo's lead over the enemy duo, against the typical lead for this hero (mean and 1 sd band). */
 function laneDuo(c, M) {
   const W = 540, H = 240, m = { l: 48, r: 10, t: 24, b: 22 }, s = svg(c, W, H), T = M.lane_curve;
   el('text', { x: m.l, y: 14 }, s, 'Your duo lead vs a typical ' + M.hero + ' duo').style.fontWeight = 600;
@@ -125,6 +132,7 @@ function seasonMap(c, deaths) {
   legend(c, [['var(--loss)', 'died in enemy territory'], ['var(--brand)', 'died on your half'], ['var(--even)', 'brighter = more deaths in the same spot']]);
 }
 
+/* Stacked bars: damage taken from each enemy, split into bullet / ability / melee. */
 function dmgBars(c, M) {
   const W = 540, rowH = 26, m = { l: 90, r: 70, t: 22, b: 6 }, rows = M.dmg, H = m.t + rows.length * rowH + m.b, s = svg(c, W, H);
   const mx = Math.max(...rows.map(d => d.bullet + d.ability + d.melee), 1), x = sc(0, mx, m.l, W - m.r);
@@ -141,6 +149,7 @@ function dmgBars(c, M) {
   legend(c, [['var(--bullet)', 'bullet'], ['var(--ability)', 'ability / other'], ['var(--melee)', 'melee']]);
 }
 
+/* Bars of damage taken per interval (bullet vs other) with step lines for the resist you owned (right axis). */
 function dmgOverTime(c, M) {
   const W = 540, H = 240, m = { l: 48, r: 44, t: 24, b: 22 }, s = svg(c, W, H), I = M.dmg_intervals;
   el('text', { x: m.l, y: 14 }, s, 'Damage taken per interval and the resist you owned').style.fontWeight = 600;
@@ -165,6 +174,7 @@ function dmgOverTime(c, M) {
   legend(c, [['var(--bullet)', 'bullet damage'], ['var(--ability)', 'ability / other damage'], ['var(--ink)', 'spirit resist owned % (right axis)'], ['var(--loss)', 'bullet resist owned % (right axis)']]);
 }
 
+/* Swimlanes of tier-3+ item purchases: you first, then each enemy. Resist items are purple. */
 function itemLanes(c, M) {
   const names = ['You', ...Object.keys(M.enemy_t3)];
   const W = 1100, rowH = 26, m = { l: 90, r: 10, t: 22, b: 22 }, H = m.t + names.length * rowH + m.b, s = svg(c, W, H, 'wide'), x = sc(0, M.dur, m.l, W - m.r);
@@ -180,6 +190,7 @@ function itemLanes(c, M) {
   });
 }
 
+/* Grouped bars: souls by source for you, the teammate average and the lane-opponent average. */
 function soulsBars(c, M) {
   const order = ['Neutrals', 'LaneCreeps', 'Players', 'Assists', 'Bosses', 'Treasure', 'Breakable', 'TeamBonus'];
   const W = 540, rowH = 40, m = { l: 90, r: 50, t: 22, b: 6 }, H = m.t + order.length * rowH + m.b, s = svg(c, W, H);
@@ -195,6 +206,7 @@ function soulsBars(c, M) {
   legend(c, [['var(--accent)', 'you'], ['var(--even)', 'teammate average'], ['var(--loss)', 'lane opponent average']]);
 }
 
+/* Build an HTML table from column definitions {h: header, f: value fn, l: left-align, cls: cell class fn} and rows. */
 function tbl(container, cols, rows, opts) {
   const t = h('table', {}, '', container);
   t.innerHTML = '<tr>' + cols.map(c => `<th class="${c.l ? 'l' : ''}">${c.h}</th>`).join('') + '</tr>' +
@@ -242,7 +254,7 @@ function renderMatch(M, P, F) {
    <div>Deaths vs teammates<b>${M.kpi.deaths} vs ${M.kpi.mate_deaths.toFixed(1)}</b></div><div>Time dead<b>${pct(M.kpi.dead_pct)} <span style="font-weight:400;color:var(--mute)">(mates ${pct(M.kpi.mate_dead_pct)})</span></b></div>
    <div>Mid boss<b>${M.kpi.midboss_mine}/${M.kpi.midboss_total} yours</b></div>${M.sl ? `<div>Statlocker<b>${M.sl.mvp}/12 &middot; ${M.sl.grade}${M.sl.mmr != null ? ' &middot; ' + (M.sl.mmr > 0 ? '+' : '') + M.sl.mmr + ' MMR' : ''}</b></div>` : ''}</div>`;
 
-  // key points
+  // Key points: three cards (work on / went well / try next). Evidence strings come from insights.py.
   const kp = $('points');
   const bad = P.problems.map(p => `<div class="pt bad"><b>${p.title}${p.recurring ? ' <span class="pill warn">recurring</span>' : ''}</b><span class="e">${p.evidence}</span></div>`).join('') || '<div class="pt good"><b>No major habit problems this game.</b></div>';
   const good = P.positives.map(p => `<div class="pt good"><b>${p.title}</b><span class="e">${p.evidence}</span></div>`).join('') || '<span class="e">Nothing clearly above average this game.</span>';
@@ -250,18 +262,23 @@ function renderMatch(M, P, F) {
   kp.innerHTML = `<div class="cols"><div class="card"><h3>Work on</h3>${bad}</div><div class="card"><h3>What went well</h3>${good}</div><div class="card"><h3>Try next game</h3>${nxt}
    <div class="sub" style="margin-top:8px">Your current focus areas: ${F.length ? F.map(f => `<span class="pill info">${f.title}</span>`).join(' ') : 'none yet'}</div></div></div>`;
 
+  // Charts: each function draws into the container with the matching id in the page template (see pages.py).
   timeline($('c-timeline'), M);
   laneNW($('c-lane1'), M); laneDuo($('c-lane2'), M);
   dmgBars($('c-dmg1'), M); dmgOverTime($('c-dmg2'), M);
   itemLanes($('c-items'), M);
   soulsBars($('c-souls'), M); deathMap($('c-map'), M);
 
+  // Deaths table. Cells in 'Allies / enemies near' turn red when you were alone or outnumbered by 2+.
   tbl($('t-deaths'), [
-    { h: '#', f: (d, i) => '', l: 1 }, { h: 'Time', f: d => mm(d.t), l: 1 }, { h: 'Killed by', f: d => d.killer + (d.killer_lane ? ' (lane)' : ''), l: 1 },
+    { h: '#', f: d => M.deaths.indexOf(d) + 1, l: 1 },
+    { h: 'Time', f: d => mm(d.t), l: 1 },
+    { h: 'Killed by', f: d => d.killer + (d.killer_lane ? ' (lane)' : ''), l: 1 },
     { h: 'Your NW vs killer', f: d => d.nw_killer == null ? '-' : sgn((d.nw_me - d.nw_killer) / 1000) + 'k' },
     { h: 'Allies / enemies near', f: d => d.allies + ' / ' + d.enemies, cls: d => d.caught ? 'c-bad' : '' },
-    { h: 'HP% 20/10/5/2s before', f: d => d.hp.join(' / ') }, { h: 'Respawn', f: d => d.respawn + 's' }, { h: 'Early', f: d => d.early ? 'yes' : '' }]
-    .map((c, j) => j == 0 ? { h: '#', f: d => M.deaths.indexOf(d) + 1, l: 1 } : c), M.deaths);
+    { h: 'HP% 20/10/5/2s before', f: d => d.hp.join(' / ') },
+    { h: 'Respawn', f: d => d.respawn + 's' },
+    { h: 'Early', f: d => d.early ? 'yes' : '' }], M.deaths);
   tbl($('t-fights'), [{ h: 'Time', f: f => mm(f.t0) + '-' + mm(f.t1), l: 1 }, { h: 'Result', f: f => f.res.toUpperCase(), cls: f => f.res == 'won' ? 'c-good' : (f.res == 'lost' ? 'c-bad' : '') },
     { h: 'Deaths (enemy / ally)', f: f => f.theirs + ' / ' + f.ours }, { h: 'First death', f: f => f.first + (f.first_us ? ' (ally)' : ' (enemy)'), l: 1 }, { h: 'You', f: f => f.pres + (f.kill ? ' + kill' : ''), l: 1 }], M.fights);
   tbl($('t-board'), [{ h: 'Hero', f: p => p.hero + (p.me ? ' (you)' : ''), l: 1 }, { h: 'Team', f: p => p.ally ? 'ally' : 'enemy', l: 1 }, { h: 'Lane', f: p => p.lane, l: 1 }, { h: 'K/D/A', f: p => p.k + '/' + p.d + '/' + p.a },
@@ -310,6 +327,7 @@ function spark(container, vals, opts) {
   vals.forEach((q, i) => { if (q == null) return; const bad = opts.bad && opts.bad(q); const c = el('circle', { cx: x(i), cy: y(q), r: 3.2, fill: bad ? 'var(--loss)' : 'var(--accent)' }, s); tip(c, (opts.labels ? opts.labels[i] + ': ' : '') + (+q).toFixed(2)); });
 }
 
+/* Fill in the season overview page from the data object O (games, insights, rules, deaths, community). */
 function renderOverview(O) {
   const G = O.games, T = O.ov.trends, F = O.ov.focus;
   O.thresholds = {}; O.flagfn = {};
@@ -317,7 +335,7 @@ function renderOverview(O) {
   const w = O.ov.outcome;
   $('head').innerHTML = `<h1>Deadlock: ranked season overview</h1><div class="sub">${G.length} ranked games this season (${w.wins} win${w.wins == 1 ? '' : 's'}). Built ${O.built}. Pick one or two focus areas, play, then re-run <code>python analyze.py overview</code> to see if the numbers move.</div>`;
 
-  // focus
+  // Focus cards: the top habits flagged in recent games, each with a sparkline of its value game by game.
   $('focus').innerHTML = F.slice(0, 3).map((f, i) => `<div class="card"><h3>${i + 1}. ${f.title}</h3>
     <div class="sub" style="margin:0 0 6px"><span class="pill warn">flagged in ${f.flagged} of your last ${f.of} games</span></div>
     <div id="fs-${f.id}"></div>
@@ -326,7 +344,7 @@ function renderOverview(O) {
     <div class="sub">Examples: ${f.examples.map(e => `<a href="matches/${e.id}.html">${e.id}</a>`).join(', ')}</div></div>`).join('') || '<div class="card">No recurring problems flagged yet.</div>';
   F.slice(0, 3).forEach(f => { const t = T.find(x => x.id == f.id); spark($('fs-' + f.id), t.series, { w: 330, h: 54, labels: G.map(g => '#' + g.id), thresh: O.thresholds[f.id], bad: v => O.flagfn[f.id](v) }); });
 
-  // trends
+  // Improvement table: baseline vs recent average per habit, with a verdict chip (tentative below 10 games).
   const rows = T.map(t => ({ ...t, ico: t.verdict == 'improving' ? '▲' : t.verdict == 'getting worse' ? '▼' : '•' }));
   const fmt = (t, v) => v == null ? '-' : (t.id == 't3' ? Math.round(v) + 's' : t.id == 'resist' ? v.toFixed(1) + '%' : v.toFixed(1));
   tbl($('trend'), [{ h: 'Habit', f: t => `<b>${t.title}</b><div class="sub" style="margin:0">${t.unit} (${t.better} is better; target ${t.target})</div>`, l: 1, cls: () => 'wrap' },
@@ -338,7 +356,7 @@ function renderOverview(O) {
   $('trend-note').innerHTML = `Baseline = your first ${w.b || '?'} games, recent = your latest ${w.b || '?'}. ` + (need > 0 ? `<b>Verdicts are tentative until you have 10 season games (${need} to go)</b>; ` : '') +
     `Win rate ${w.b ? `${pct(w.baseline_wr)} &rarr; ${pct(w.recent_wr)}` : 'n/a'} is shown for context only: a handful of games is mostly noise, so judge progress by the habit numbers, not by wins.`;
 
-  // matrix
+  // Habit-by-game grid: red = flagged that game, green = fine, grey = not measurable.
   const HID = T.map(t => t.id);
   tbl($('matrix'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.calib ? '#' + g.calib : g.id}</a>`, l: 1 }, { h: 'Result', f: g => `<span class="pill ${g.win ? 'win' : 'loss'}">${g.win ? 'W' : 'L'}</span>` }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'KDA', f: g => g.kda.join('/') },
     ...HID.map(id => ({ h: HABIT_SHORT[id], f: g => { const r = g.habits[id]; return r.flag ? 'flag' : (r.value == null ? 'n/a' : 'ok'); }, cls: g => { const r = g.habits[id]; return r.flag ? 'c-bad' : (r.value == null ? 'c-na' : 'c-good'); } })),

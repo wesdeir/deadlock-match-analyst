@@ -24,6 +24,7 @@ DOCS = Path(__file__).parent / "docs"
 
 
 def load_records(history, names, refresh=False, max_fetch=2):
+    """Return per-match records for the season, optionally downloading missing matches first (newest first, rate-limit safe)."""
     season = kpis.season_matches(history)
     fetched = 0
     if refresh:
@@ -46,6 +47,7 @@ def load_records(history, names, refresh=False, max_fetch=2):
 
 
 def main():
+    """Parse the command, build records and insights, then write the requested pages and coach briefs."""
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=["match", "overview", "all", "coach"])
     ap.add_argument("match_id", nargs="?", type=int)
@@ -58,6 +60,7 @@ def main():
         sys.exit("No season matches with metadata yet.")
     api.ensure_map_image(DOCS / "assets" / "map.png")  # cosmetic; pages fall back to the remote image
     ov = insights.overview(records)
+    # The top-3 focus habits get a 'recurring' tag on each match page.
     recurring = {f["id"] for f in ov["focus"][:3]}
     focus3 = [{"id": f["id"], "title": f["title"]} for f in ov["focus"][:3]]
     snap = statlocker.load()  # optional: community percentiles + per-game grade/MMR from Statlocker

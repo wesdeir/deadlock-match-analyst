@@ -29,6 +29,7 @@ SKIP = {"YOUR RANK", "AVG MATCH RANK", "ABANDON RATE", "WIN RATE", "KDA RATIO", 
 
 
 def load():
+    """Read the hand-captured Statlocker snapshot, or None if it doesn't exist."""
     try:
         return json.loads(SNAPSHOT.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -36,6 +37,7 @@ def load():
 
 
 def _secs(mmss):
+    """'42:12' -> 2532 seconds."""
     m, s = mmss.split(":")
     return int(m) * 60 + int(s)
 

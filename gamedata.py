@@ -1,6 +1,7 @@
 """Build gamedata.json (hero/item names + item stats) from the SteamTracking/GameTracking-Deadlock text dumps
 in data/gametracking/. Pure text parsing - nothing from those files is ever executed."""
-import json, re, sys
+import json
+import re
 from pathlib import Path
 from analyst import murmur2
 
@@ -8,6 +9,7 @@ D = Path(__file__).parent / "data" / "gametracking"
 
 
 def tokens(fn):
+    """Parse a Valve localization file into {token: text}."""
     out = {}
     for line in (D / fn).read_text(encoding="utf-8-sig").splitlines():
         m = re.match(r'\s*"([^"]+)"\s+"(.*)"\s*$', line)
@@ -18,6 +20,7 @@ def tokens(fn):
 
 def top_blocks(fn):
     """Yield (name, [lines]) for each top-level entry of a vdata file (depth-1 `name =` blocks)."""
+    # vdata files nest blocks with braces; the entries we want sit at depth 1 (a `name =` line, then `{ ... }`).
     depth, name, buf = 0, None, []
     for line in (D / fn).read_text(encoding="utf-8-sig").splitlines():
         s = line.strip()
@@ -35,6 +38,7 @@ def top_blocks(fn):
 
 
 def scalar(lines, key):
+    """Value of a simple `key = value` line inside a vdata block (None if absent)."""
     for l in lines:
         m = re.match(rf'\s*{key} = "?([^"\n]*)"?\s*$', l)
         if m:
@@ -42,6 +46,7 @@ def scalar(lines, key):
 
 
 def main():
+    """Build gamedata.json from the downloaded text dumps and print a quick sanity check."""
     hero_names = tokens("citadel_gc_hero_names_english.txt")
     item_names = tokens("citadel_gc_mod_names_english.txt")
     heroes = {}
@@ -56,6 +61,7 @@ def main():
     for name, lines in top_blocks("abilities.vdata"):
         if not any('_class = "citadel_item"' in l for l in lines[:6]):
             continue
+        # Collect each property's value: a property line sits three tabs in, its `m_strValue` four tabs in.
         props, cur = {}, None
         for l in lines:
             if m := re.match(r"^\t\t\t([A-Za-z0-9_]+) = $", l):

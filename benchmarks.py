@@ -11,21 +11,25 @@ A = api.API
 
 
 def hero_stats(hero_id, refresh=False):
+    """All-rank ranked averages for one hero (win rate, K/D/A, accuracy...), cached."""
     rows = api.get_json(f"{A}/v1/analytics/hero-stats?match_mode=ranked", refresh) or []
     return next((r for r in rows if r["hero_id"] == hero_id), None)
 
 
 def perf_curve(hero_id, refresh=False):
+    """Average net worth etc. over the course of a game for one hero, in 10% steps, cached."""
     return api.get_json(f"{A}/v1/analytics/player-performance-curve?match_mode=ranked&hero_ids={hero_id}&resolution=10", refresh)
 
 
 def lane_curve(hero_id, lane, refresh=False):
+    """Typical lead of a duo containing this hero in this lane over time (mean and sd), cached."""
     rows = api.get_json(f"{A}/v1/analytics/lane-soul-curve?match_mode=ranked&hero_ids={hero_id}"
                         f"&group_by=assigned_lane&min_matches=30", refresh) or []
     return next((r for r in rows if r["assigned_lane"] == lane), None)
 
 
 def section_benchmarks(mi, me, names, lines):
+    """Report section: compare this game with the all-rank averages for the hero."""
     hid = me["hero_id"]
     lines.append(f"## 3e. Benchmarks vs all ranked {names.hero(hid)} games (all ranks, ~30 days; rough yardstick)")
     try:
@@ -47,6 +51,7 @@ def section_benchmarks(mi, me, names, lines):
                      f"last hits {me['last_hits']}, denies {me['denies']}, shot accuracy {fin['shots_hit'] / mine_shots:.0%} "
                      f"(note: game length differs, so totals are only roughly comparable)")
     if pc:
+        # Performance-curve rows are keyed by the percentage of the game elapsed (0, 10, ... 100).
         pts = {r["game_time"]: r for r in pc}
         mys = nw_series(me)
         out = []
@@ -65,6 +70,7 @@ def section_benchmarks(mi, me, names, lines):
             ms = [nw_series(p) for p in mate]
             os_ = [nw_series(p) for p in opp]
             out = []
+            # Lane samples exist every 180s up to 15:00, then every 300s; stop at the end of this match.
             for t, mean, sd in zip(lc["sample_times_s"], lc["net_worth_diff"], lc["net_worth_diff_std"]):
                 if t not in (360, 540, 900) or t > mi["duration_s"]:
                     continue

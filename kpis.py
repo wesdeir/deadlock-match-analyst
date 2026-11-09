@@ -22,12 +22,14 @@ EARLY_S = 600  # lane-phase cutoff for "early deaths"
 
 
 def _first_t3(p, meta):
+    """Time of the player's first tier-3+ non-ability item (None if never)."""
     ts = [i["game_time_s"] for i in p["items"]
           if meta.get(i["item_id"], (0, ""))[0] >= 3 and meta.get(i["item_id"], (0, ""))[1] != "ability"]
     return min(ts) if ts else None
 
 
 def _safe(fn, *a):
+    """Call a benchmark function but never let a network/rate-limit problem break a match build."""
     try:
         return fn(*a)
     except (api.RateLimited, Exception):  # benchmarks are a bonus; never fail a match build because of them
@@ -35,6 +37,7 @@ def _safe(fn, *a):
 
 
 def compute(match_id, hist_row, names, hero_cache=None):
+    """Build the full record for one match: scoreboard, deaths, fights, damage, items, economy, benchmarks and habit KPIs."""
     raw = api.cached_match_metadata(match_id) or api.match_metadata(match_id)
     mi = raw["match_info"]
     analyst.derive_hero_codes(mi, names)
@@ -87,6 +90,7 @@ def compute(match_id, hist_row, names, hero_cache=None):
         return al, en
 
     # peers (the other 11 players) give a same-game baseline for "caught" deaths
+    # Same-game baseline: how often the OTHER players die alone/outnumbered (used to judge whether mine is unusual).
     peer_caught = peer_deaths = 0
     mate_first_die = []
     for p in mi["players"]:
@@ -251,9 +255,11 @@ def compute(match_id, hist_row, names, hero_cache=None):
     fights_in = sum(1 for f in frows if f["pres"] in ("died", "there") or f["kill"])
     team_kills = sum(p["kills"] for p in team)
     f3, ef = _first_t3(me, meta), [x for x in (_first_t3(p, meta) for p in foes) if x]
+    # Resist items owned at 20:00, used for the 'defensive items late' habit.
     res20 = analyst.resist_owned(me, 1200, names)
     top = dmg[0] if dmg else None
     top_total = (top["bullet"] + top["ability"] + top["melee"]) if top else 0
+    # The habit KPIs: everything here is measured the same way in every game so it can be tracked over time.
     kpi = {
         "deaths": n_d, "deaths_rel": n_d - mate_d, "mate_deaths": mate_d,
         "dead_pct": my_dead / dur, "mate_dead_pct": mate_dead / dur,
@@ -301,6 +307,7 @@ def season_matches(history):
 
 
 def load(match_id):
+    """Read a saved match record if it exists and matches the current schema version."""
     f = OUT_DIR / f"{match_id}.json"
     if f.exists():
         d = json.loads(f.read_text(encoding="utf-8"))

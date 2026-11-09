@@ -7,6 +7,7 @@ docs/coach/season.md and docs/coach/match_<id>.md.
 from analyst import mmss
 import insights
 
+# The coaching prompt that is pasted above each brief. Edit these to change what Claude is asked.
 ASK_SEASON = """You are my Deadlock coach. Use ONLY the data below (be honest about small sample sizes).
 1. Pick the 2-3 most valuable things for me to practise, ordered by impact.
 2. For each, give one concrete in-game adjustment I can apply next game, and how I'll measure it from this data.
@@ -21,10 +22,12 @@ Skip tiny mistakes. Be concrete, not generic."""
 
 
 def _f(v, d=1):
+    """Format a possibly-missing number."""
     return "n/a" if v is None else f"{v:.{d}f}"
 
 
 def season_brief(records, ov, community=None, sl=None):
+    """Markdown brief of the whole season (focus areas, trends, game table) plus a coaching prompt."""
     sl = sl or {}
     n = len(records)
     wins = sum(1 for m in records if m["win"])
@@ -65,6 +68,7 @@ def season_brief(records, ov, community=None, sl=None):
 
 
 def match_brief(m, points, focus, sl=None):
+    """Markdown brief of one match (key points, deaths, fights, damage, items) plus a coaching prompt."""
     k = m["kpi"]
     L = [f"# Deadlock coaching request: match {m['id']}", "", ASK_MATCH, "",
          f"## Result", f"{m['hero']} - {'WIN' if m['win'] else 'LOSS'} - {mmss(m['dur'])} - {m['lane']} lane with {', '.join(m['lane_mate']) or 'nobody'} vs {' + '.join(m['lane_opp'])}. "

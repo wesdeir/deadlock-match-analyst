@@ -32,6 +32,7 @@ STAT_TYPES = proto_enum("EStatType", "k_eType_")
 
 
 def lane_name(names, lane_id):
+    """Name of a lane id (York/Broadway/Greenwich), falling back to 'lane N'."""
     try:
         return names.lanes[lane_id]
     except (AttributeError, IndexError, KeyError):
@@ -39,6 +40,7 @@ def lane_name(names, lane_id):
 
 
 def final_stat(p):
+    """A player's last stats snapshot (end-of-game totals)."""
     return p["stats"][-1]
 
 
@@ -56,6 +58,7 @@ def custom_stat(mi, p, wanted_name, snap=None):
 
 # ---------------------------------------------------------------- economy
 def section_economy(mi, me, names, lines):
+    """Report section: souls by source versus teammates and lane opponents, plus a few custom stats."""
     team = [p for p in mi["players"] if p["team"] == me["team"]]
     opp = [p for p in mi["players"] if p["assigned_lane"] == me["assigned_lane"] and p["team"] != me["team"]]
     lines.append("## 3b. Economy (souls by source, final snapshot)")
@@ -101,6 +104,7 @@ def section_economy(mi, me, names, lines):
 
 # ---------------------------------------------------------------- objectives
 def objective_line(mi, me):
+    """Two report lines: objectives my team destroyed and objectives we lost, with their names."""
     objs = sorted((o for o in mi["objectives"] if o["destroyed_time_s"]), key=lambda o: o["destroyed_time_s"])
 
     def nm(o):
@@ -122,6 +126,7 @@ def check_objective_owner(mi):
 
 # ---------------------------------------------------------------- fights
 def find_fights(mi, gap=20):
+    """Group all deaths in the match into fights: a new fight starts when the gap between deaths exceeds `gap` seconds."""
     deaths = []
     players = {p["player_slot"]: p for p in mi["players"]}
     for p in mi["players"]:
@@ -130,6 +135,7 @@ def find_fights(mi, gap=20):
     deaths.sort()
     fights, cur = [], []
     for d in deaths:
+        # A new fight starts when the gap since the previous death is longer than `gap` seconds.
         if cur and d[0] - cur[-1][0] > gap:
             fights.append(cur)
             cur = []
@@ -140,6 +146,7 @@ def find_fights(mi, gap=20):
 
 
 def section_fights(mi, me, names, lines, brief=False):
+    """Report section: each fight (3+ deaths or involving me), who won it, who died first and where I was."""
     fights, players = find_fights(mi)
     paths = {p["player_slot"]: p for p in mi["match_paths"]["paths"]}
     dead = dead_intervals(mi)
@@ -188,6 +195,7 @@ def section_fights(mi, me, names, lines, brief=False):
 
 # ---------------------------------------------------------------- enemy items
 def section_enemy_items(mi, me, names, lines):
+    """Report section: each enemy's tier-3+ item purchases with times."""
     enemies = [p for p in mi["players"] if p["team"] != me["team"]]
     lines.append("## 3d. Enemy tier-3+ item timeline (for judging when counters were needed)")
     meta = getattr(names, "item_meta", {})
@@ -203,6 +211,7 @@ def section_enemy_items(mi, me, names, lines):
 
 # ---------------------------------------------------------------- death HP
 def death_hp_line(mi, me, dd):
+    """One report line: my HP% just before a death and how far the killer was."""
     paths = {p["player_slot"]: p for p in mi["match_paths"]["paths"]}
     pa = paths.get(me["player_slot"])
     if not pa or "health" not in pa:
@@ -217,6 +226,7 @@ def death_hp_line(mi, me, dd):
 
 # ---------------------------------------------------------------- scorecard
 def game_summary(mi, me, names, hist):
+    """One row of per-game numbers (lane diffs, early deaths, souls/min...) for the calibration scorecard."""
     opp = [p for p in mi["players"] if p["assigned_lane"] == me["assigned_lane"] and p["team"] != me["team"]]
     team = [p for p in mi["players"] if p["team"] == me["team"]]
     mys = nw_series(me)
@@ -254,6 +264,7 @@ def game_summary(mi, me, names, hist):
 
 
 def scorecard_lines(rows):
+    """Markdown table of the per-game summaries."""
     f = lambda v: "-" if v is None else f"{v:+,.0f}"
     out = ["## Scorecard", "| game | match | hero | lane | result | KDA | lane diff @6/@9/@15/end | team diff @15 | deaths <10m | first death | first to die in fights | deaths (team avg) | souls/min | bullet % taken |",
            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -266,6 +277,7 @@ def scorecard_lines(rows):
 
 
 def pattern_lines(rows):
+    """Short wins-versus-losses comparison across the summarised games."""
     out = ["", "Patterns across these games:"]
     losses = [r for r in rows if not r["win"]]
     wins = [r for r in rows if r["win"]]

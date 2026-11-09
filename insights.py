@@ -19,6 +19,7 @@ def eff_resist_20(k):
 
 
 def value(habit_id, m):
+    """The tracked number for one habit in one match (None if it can't be measured)."""
     k = m["kpi"]
     if habit_id == "deaths":
         return k["deaths_rel"]
@@ -39,10 +40,12 @@ def value(habit_id, m):
 
 
 def _late_cost(m):
+    """Seconds of respawn time lost to deaths after 25:00."""
     return sum(d["respawn"] for d in m["deaths"] if d["t"] >= 1500)
 
 
 def _ev_deaths(m):
+    """Evidence text for the 'dying more than teammates' habit."""
     k = m["kpi"]
     late = _late_cost(m)
     return (f"{k['deaths']} deaths vs {k['mate_deaths']:.1f} teammate average; {k['dead_pct']:.0%} of the game spent dead "
@@ -50,6 +53,7 @@ def _ev_deaths(m):
 
 
 def _ev_early(m):
+    """Evidence text for the lane-phase deaths habit."""
     ds = [d for d in m["deaths"] if d["early"]]
     killers = {}
     for d in ds:
@@ -60,12 +64,14 @@ def _ev_early(m):
 
 
 def _ev_first(m):
+    """Evidence text for the first-to-die habit."""
     k = m["kpi"]
     ts = [mmss(f["t0"]) for f in m["fights"] if f["first_me"] and f["ours"] + f["theirs"] >= 2]
     return f"first to die in {k['first_die']} fights (teammates average {k['mate_first_die']:.1f}): " + ", ".join(ts)
 
 
 def _ev_resist(m):
+    """Evidence text for the late-resist-items habit."""
     k = m["kpi"]
     firsts = [i for i in m["items"] if any(t.startswith(("spirit_resist=", "bullet_resist=")) for t in i["tags"])]
     first = f"; first resist item {firsts[0]['name']} at {mmss(firsts[0]['t'])}" if firsts else "; no resist item bought"
@@ -76,6 +82,7 @@ def _ev_resist(m):
 
 
 def _ev_t3(m):
+    """Evidence text for the slow first tier-3 item habit."""
     k = m["kpi"]
     t3 = [i for i in m["items"] if i["tier"] >= 3 and i["slot"] != "ability"]
     nm = f" ({t3[0]['name']})" if t3 else ""
@@ -83,6 +90,7 @@ def _ev_t3(m):
 
 
 def _ev_lane(m):
+    """Evidence text for the lane habit."""
     k = m["kpi"]
     bits = []
     for t, z in ((540, k["lane_z9"]), (900, k["lane_z15"])):
@@ -93,10 +101,12 @@ def _ev_lane(m):
 
 
 def _ev_souls(m):
+    """Evidence text for the low-souls habit."""
     k = m["kpi"]
     return (f"net worth {m['nw']:,} at the end = {k['nw_z_end']:+.1f} sd vs the average {m['hero']} game; {k['spm']:,.0f} souls/min")
 
 
+# Each habit: how it is measured (value), when it is flagged (flag/thresh), how bad (sev), what counts as a meaningful change (change), and advice.
 HABITS = [
     dict(id="deaths", title="Dying more than your teammates", unit="deaths vs team avg", better="lower", target="at or below 0",
          thresh=2.0, flag=lambda m, v: v is not None and v >= 2.0, sev=lambda v: v / 2.0, change=1.0, ev=_ev_deaths,
@@ -162,6 +172,7 @@ def positives(m):
 
 
 def evaluate(m):
+    """Evaluate every habit for one match: value, flagged or not, severity and evidence."""
     rows = []
     for h in HABITS:
         v = value(h["id"], m)
@@ -203,6 +214,7 @@ def overview(matches, window=10):
     focus.sort(key=lambda f: (-(f["flagged"] / f["of"]), -f["mean_sev"]))
 
     # trends: first B vs last B games
+    # Baseline vs recent window: 5 games each from 10 games on, half the games from 6-9, otherwise not enough data.
     if n >= 10:
         b = 5
     elif n >= 6:

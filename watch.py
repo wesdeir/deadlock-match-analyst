@@ -11,7 +11,6 @@ and run `analyze.py all`. State is kept in data/watch_state.json. Stop with Ctrl
 """
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
@@ -27,10 +26,12 @@ STATE = HERE / "data" / "watch_state.json"
 
 
 def log(msg):
+    """Print a timestamped line."""
     print(time.strftime("[%H:%M:%S] ") + msg, flush=True)
 
 
 def load_state():
+    """Read the watcher's saved state (the last match it processed)."""
     try:
         return json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -38,6 +39,7 @@ def load_state():
 
 
 def save_state(s):
+    """Persist the watcher's state."""
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(s), encoding="utf-8")
 
@@ -60,6 +62,7 @@ def fetch_metadata(match_id, tries=6, spacing_s=600):
 
 
 def rebuild(match_id, open_page):
+    """Rebuild all dashboards, beep, and optionally open the new match page."""
     log("rebuilding dashboards...")
     subprocess.run([sys.executable, str(HERE / "analyze.py"), "all"], check=False)
     page = HERE / "docs" / "matches" / f"{match_id}.html"
@@ -74,6 +77,7 @@ def rebuild(match_id, open_page):
 
 
 def check_once(args, state):
+    """One polling pass: look for new ranked matches, download and process them."""
     hist = api.match_history(analyst.ACCOUNT_ID, refresh=True)
     season = kpis.season_matches(hist)
     if not season:
@@ -101,12 +105,14 @@ def check_once(args, state):
 
 
 def main():
+    """Parse options and poll until stopped (or once, with --once)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--interval", type=float, default=7, help="minutes between checks (minimum 6)")
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--open", action="store_true", help="open the new match page in your browser")
     ap.add_argument("--since", type=int, help="treat matches newer than this id as new (for testing)")
     args = ap.parse_args()
+    # Never poll faster than every 6 minutes (the history endpoint allows only 10/hour for accounts friends with an API bot).
     interval = max(6.0, args.interval) * 60
     state = load_state()
     log(f"watching account {analyst.ACCOUNT_ID} every {interval / 60:.0f} min (Ctrl+C to stop)")

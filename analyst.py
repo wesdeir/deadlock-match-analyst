@@ -31,6 +31,7 @@ class Names:
     """Resolve ids: names.json > cached assets tables > derived from match data > raw id."""
 
     def __init__(self, refresh_assets=False):
+        """Build the id -> name tables: API/assets tables first, then gamedata.json, then names.json overrides."""
         self.heroes, self.items, self.tags = {}, {}, {}
         self.derived_heroes = {}
         self.item_classes = {}
@@ -78,6 +79,7 @@ class Names:
     }
 
     def _load_gamedata(self):
+        """Merge hero/item names and item property values from gamedata.json (built by gamedata.py); also derives the resist tags."""
         f = HERE / "gamedata.json"
         if not f.exists():
             return
@@ -109,6 +111,7 @@ class Names:
         self.source.append("names: gamedata.json (GameTracking-Deadlock dump)")
 
     def hero(self, hid):
+        """Display name for a hero id (table name, else internal code derived from the match, else 'hero#id')."""
         if hid in self.heroes:
             return self.heroes[hid]
         if hid in self.derived_heroes:
@@ -116,6 +119,7 @@ class Names:
         return f"hero#{hid}"
 
     def item(self, iid):
+        """Display name for an item id, with any resist/anti-heal tags appended in brackets."""
         n = self.items.get(iid) or self.item_classes.get(iid)
         t = self.tags.get(iid)
         base = n if n else f"item#{iid}"
@@ -183,6 +187,7 @@ def derive_item_classes(mi, names):
 
 # ---------------------------------------------------------------- helpers
 def mmss(t):
+    """Format seconds as m:ss (e.g. 1234 -> '20:34')."""
     t = int(round(t))
     return f"{t // 60}:{t % 60:02d}"
 
@@ -200,15 +205,20 @@ def interp(points, t):
 
 
 def nw_series(p):
+    """A player's net-worth snapshots as sorted (time_s, net_worth) points, starting from (0, 0)."""
+    # Snapshots only start at 3:00, so prepend (0, 0) to let curves be interpolated from the start of the game.
     return [(0, 0)] + sorted((s["time_stamp_s"], s["net_worth"]) for s in p["stats"])
 
 
 def nearest_snapshot(p, t):
+    """The stats snapshot closest in time to t (snapshots are every 3-5 minutes)."""
     return min(p["stats"], key=lambda s: abs(s["time_stamp_s"] - t))
 
 
 def pos_at(path, t):
+    """A player's map position (x, y) at second t, converted from the packed path data to game coordinates."""
     t = max(0, min(int(t), len(path["x_pos"]) - 1))
+    # Paths store each coordinate as a 0..16383 fraction of that player's own bounding box (x_min..x_max).
     x = path["x_min"] + path["x_pos"][t] / 16383 * (path["x_max"] - path["x_min"])
     y = path["y_min"] + path["y_pos"][t] / 16383 * (path["y_max"] - path["y_min"])
     return x, y
@@ -234,6 +244,7 @@ def matrix_cells(mi):
 def damage_profile(mi, dealer, target):
     """Damage dealer->target split by aggregate source (stat_type 0, aggregate rows). VERIFIED: sums to player_damage."""
     out = collections.Counter()
+    # Walk the damage matrix: dealer d, target t, stat type st (0 = damage), source name, cumulative series a.
     for d, t, st, name, a in matrix_cells(mi):
         if d == dealer and t == target and st == 0 and name in AGG:
             out[name] += a[-1]
@@ -261,6 +272,7 @@ def resist_owned(p, t, names):
 
 
 def dead_intervals(mi):
+    """Per player slot: list of (death_time, respawn_time) intervals - used to know who is alive at a given second."""
     iv = collections.defaultdict(list)
     for p in mi["players"]:
         for dd in p["death_details"]:
@@ -270,6 +282,7 @@ def dead_intervals(mi):
 
 # ---------------------------------------------------------------- report sections
 def section_overview(mi, me, names, lines):
+    """Report section 1: result, lane matchup and the net-worth curve against the lane opponents."""
     players = {p["player_slot"]: p for p in mi["players"]}
     won = me["team"] == mi["winning_team"]
     start = datetime.fromtimestamp(mi["start_time"], tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -306,6 +319,7 @@ def section_overview(mi, me, names, lines):
 
 
 def section_deaths(mi, me, names, lines):
+    """Report section 2: every death with killer, net worth, who was nearby, HP beforehand and a snapshot."""
     players = {p["player_slot"]: p for p in mi["players"]}
     paths = {p["player_slot"]: p for p in mi["match_paths"]["paths"]}
     dead = dead_intervals(mi)
@@ -341,22 +355,25 @@ def section_deaths(mi, me, names, lines):
                 if any(a <= t - 1 < b for a, b in dead[sl]):
                     continue
                 x, y = pos_at(pp, t - 1)
+                # 'Near' = within 2500 map units, measured 1s before the death so we see who was close as it happened.
                 if math.hypot(x - mx, y - my) <= 2500:
                     (al if players[sl]["team"] == me["team"] else en).append(names.hero(players[sl]["hero_id"]))
             lines.append(f"- Near at t-1s: allies {len(al)} {al or ''}; enemies {len(en)} {en or ''}")
+        # Imported here (not at the top): extras imports helpers from this module, so a top-level import would be circular.
         import extras
         hp = extras.death_hp_line(mi, me, dd)
         if hp:
             lines.append(hp)
         s = nearest_snapshot(me, t)
         if not BRIEF:
-          lines.append(f"- Nearest own snapshot t={mmss(s['time_stamp_s'])}: NW {s['net_worth']:,}, lvl {s['level']}, "
-                       f"K/D/A {s['kills']}/{s['deaths']}/{s['assists']}, max HP {s['max_health']}, "
-                       f"weapon/tech power {s['weapon_power']}/{s['tech_power']}, dmg taken so far {s['player_damage_taken']:,}")
+            lines.append(f"- Nearest own snapshot t={mmss(s['time_stamp_s'])}: NW {s['net_worth']:,}, lvl {s['level']}, "
+                         f"K/D/A {s['kills']}/{s['deaths']}/{s['assists']}, max HP {s['max_health']}, "
+                         f"weapon/tech power {s['weapon_power']}/{s['tech_power']}, dmg taken so far {s['player_damage_taken']:,}")
         lines.append("")
 
 
 def section_counter(mi, me, names, lines):
+    """Report section 3: damage taken by enemy and type, per-interval mix with resist owned, and item timing."""
     slot = me["player_slot"]
     enemies = [p for p in mi["players"] if p["team"] != me["team"]]
     lines.append("## 3. Enemy damage types vs my item timing")
@@ -387,6 +404,7 @@ def section_counter(mi, me, names, lines):
     ens = {e["player_slot"] for e in enemies}
     for d, t, st, name, a in matrix_cells(mi):
         if d in ens and t == slot and st == 0 and name in AGG:
+            # The matrix is cumulative, so each interval's damage is this sample minus the previous one.
             prev = 0
             for k, v in enumerate(a):
                 per[k][name] += v - prev
@@ -426,6 +444,7 @@ def section_counter(mi, me, names, lines):
 
 
 def section_good(mi, me, names, lines):
+    """Report section 4: what went well - farm, kills, accuracy, objectives, mid boss and team swings."""
     players = {p["player_slot"]: p for p in mi["players"]}
     slot = me["player_slot"]
     lines.append("## 4. What went well")
@@ -464,6 +483,7 @@ def section_good(mi, me, names, lines):
         lines.append("- Multi-kills: " + "; ".join(f"{len(c)} kills at {mmss(c[0][0])}" for c in multi))
     # objectives
     objs = sorted((o for o in mi["objectives"] if o["destroyed_time_s"]), key=lambda o: o["destroyed_time_s"])
+    # Imported here (not at the top): extras imports helpers from this module, so a top-level import would be circular.
     import extras
     if not BRIEF:
         lines.append(extras.objective_line(mi, me) + ("" if extras.check_objective_owner(mi) else
@@ -513,6 +533,7 @@ def calibration_matches(history):
 
 
 def section_trends(history, names, last_n, lines, matches=None):
+    """Report section 5: results by hero over a set of ranked matches."""
     ranked = sorted((m for m in history if m["match_mode"] == RANKED), key=lambda m: -m["match_id"])
     rec = matches if matches is not None else ranked[:last_n]
     label = "calibration run" if matches is not None else f"last {len(rec)} ranked"
@@ -561,6 +582,8 @@ def section_trends(history, names, last_n, lines, matches=None):
 
 
 def emit_match(mi, me, names, lines):
+    """Write every report section for one match, in order."""
+    # Imported here (not at the top): extras imports helpers from this module, so a top-level import would be circular.
     import extras
     section_overview(mi, me, names, lines)
     section_deaths(mi, me, names, lines)
@@ -575,6 +598,7 @@ def emit_match(mi, me, names, lines):
 
 
 def calibration_report(history, args):
+    """Build reports/calibration_report.md: trends, scorecard and a full per-match report for each calibration game."""
     cal = calibration_matches(history)
     names = Names(args.refresh_assets)
     lines = [f"# Deadlock calibration run - account {ACCOUNT_ID}",
@@ -582,6 +606,7 @@ def calibration_report(history, args):
              f"{sorted(m['ranked_calibration_match'] for m in cal)} (a gap means that game is missing from the API history). "
              f"Names: {'; '.join(names.source)}._", ""]
     section_trends(history, names, 0, lines, matches=cal)
+    # Imported here (not at the top): extras imports helpers from this module, so a top-level import would be circular.
     import extras
     summaries, body_start = [], len(lines)
     lines.append("## Per-match reports (oldest first)")
@@ -611,6 +636,7 @@ def calibration_report(history, args):
 
 # ---------------------------------------------------------------- main
 def main():
+    """Command-line entry point: one match report (default) or the calibration report."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--match", type=int)
     ap.add_argument("--last", type=int, default=30)
