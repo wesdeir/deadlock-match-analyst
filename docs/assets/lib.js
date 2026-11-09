@@ -19,7 +19,8 @@ function onResize(fn) {
 /* Hero portrait <img> for a hero name ('icon' = small round portrait, 'card' = large art). '' if there is no art for it. */
 function hi(name, kind) {
   const e = (window.HEROES || {})[name], k = kind || 'icon';
-  return e && e[k] ? `<img class="hi ${k}" src="${window.ASSET_BASE || ''}${e[k]}" alt="" loading="lazy">` : '';
+  const px = k === 'card' ? 120 : 24;  // explicit size avoids layout shift; the hero card is above the fold, so it loads eagerly
+  return e && e[k] ? `<img class="hi ${k}" src="${window.ASSET_BASE || ''}${e[k]}" alt="" width="${px}" height="${px}" ${k === 'card' ? '' : 'loading="lazy"'}>` : '';
 }
 /* Portrait followed by the hero's name, for table cells and lists. */
 function hn(name) { return `<span class="hn">${hi(name)}${name}</span>`; }

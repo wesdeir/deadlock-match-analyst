@@ -14,8 +14,8 @@ def _asset_version():
     return int(max((DOCS / "assets" / f).stat().st_mtime for f in ("lib.css", "lib.js")))
 
 # Shared page shell. {base} is the relative path back to docs/ ('' for index.html, '../' for match pages).
-HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="{base}assets/lib.css?v={v}"></head><body><header id="nav"></header><main>"""
+HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d0d10">
+<title>{title}</title><link rel="stylesheet" href="{base}assets/lib.css?v={v}"></head><body><a class="skip" href="#main">Skip to content</a><header id="nav"></header><main id="main">"""
 TAIL = """</main><script src="{base}assets/heroes.js?v={v}"></script><script src="{base}assets/lib.js?v={v}"></script><script>window.ASSET_BASE="{base}";{script}</script></body></html>"""
 
 
