@@ -45,6 +45,8 @@ scheduled task that runs every few minutes instead.
   briefs / `data/matches/*.json`, and coach from the real data.
 
 ## Publish as a website (GitHub Pages, free)
+**Live site: https://wesdeir.github.io/deadlock-match-analyst/** (Pages is enabled: branch `main`, folder `/docs`). The site updates a minute or so after you push: after `python refresh.py` (or the watcher) run `git add -A && git commit -m "update" && git push`.
+
 The site is just the `docs/` folder. In the GitHub repo: **Settings -> Pages -> Build and deployment -> Source: Deploy
 from a branch -> Branch `main`, folder `/docs` -> Save**. It appears at
 `https://<your-username>.github.io/deadlock-match-analyst/` after a minute. (Free Pages needs a public repo.) The

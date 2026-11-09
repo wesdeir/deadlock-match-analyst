@@ -82,3 +82,6 @@ Team-level: the enemy claimed every mid boss in all 5 losses; my team claimed bo
   Matches page (2 pages), Performance -> vs Community and Laning pages and rewrites the JSON.
 - Caveat: the "vs Community" panel seems to mix game modes (win rate 54.5% / KDA 3.11 vs the ranked overview's 40% / 2.47),
   so its percentiles are indicative only. In-game rank is Sentinel III; Statlocker's own rating says Sentinel II (2331 PP).
+
+## Hosting
+GitHub Pages is enabled for `main` `/docs` (done 2026-11-08): https://wesdeir.github.io/deadlock-match-analyst/ . The map image loads from the API asset server there (it is not in the repo).
