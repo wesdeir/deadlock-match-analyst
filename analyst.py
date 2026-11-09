@@ -490,15 +490,22 @@ def section_good(mi, me, names, lines):
 
 
 def calibration_matches(history):
-    """This season's calibration run: ranked matches carrying a calibration counter, newest first by match_id.
-    (start_time is unreliable for some old entries, so ordering is by match_id.) Stops at the first ranked match
-    that has no counter - older seasons."""
+    """The latest calibration run: ranked matches that carry a calibration counter, returned newest first.
+
+    Ordering is by match_id (start_time is unreliable for some very old entries). Ranked games played AFTER calibration
+    have no counter, so they are skipped first; then we collect games while the counter keeps falling as we go back in
+    time (a rise means we have reached an older season's calibration run, so we stop).
+    """
     ranked = sorted((m for m in history if m["match_mode"] == RANKED), key=lambda m: -m["match_id"])
     out = []
     prev = 10**9
     for m in ranked:
         c = m.get("ranked_calibration_match") or 0
-        if c <= 0 or c >= prev:  # counter must keep falling as we go back; a rise = an older calibration run
+        if c <= 0:
+            if out:
+                break  # the counter ended: older, pre-calibration games
+            continue  # newer ranked games played after calibration: skip them
+        if c >= prev:  # counter went up going back in time = an older calibration run
             break
         out.append(m)
         prev = c
