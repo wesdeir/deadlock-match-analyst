@@ -240,7 +240,7 @@ function renderMatch(M, P, F) {
    <div class="sub">${date} &middot; ${mm(M.dur)} &middot; ${M.lane} lane with ${M.lane_mate.join(', ') || 'nobody'} vs ${M.lane_opp.join(' + ')}</div>
    <div class="kv"><div>KDA<b>${M.kda.join(' / ')}</b></div><div>Net worth<b>${num(M.nw)}</b></div><div>Souls / min<b>${num(M.kpi.spm)}</b></div><div>Last hits<b>${M.lh}</b></div>
    <div>Deaths vs teammates<b>${M.kpi.deaths} vs ${M.kpi.mate_deaths.toFixed(1)}</b></div><div>Time dead<b>${pct(M.kpi.dead_pct)} <span style="font-weight:400;color:var(--mute)">(mates ${pct(M.kpi.mate_dead_pct)})</span></b></div>
-   <div>Mid boss<b>${M.kpi.midboss_mine}/${M.kpi.midboss_total} yours</b></div></div>`;
+   <div>Mid boss<b>${M.kpi.midboss_mine}/${M.kpi.midboss_total} yours</b></div>${M.sl ? `<div>Statlocker<b>${M.sl.mvp}/12 &middot; ${M.sl.grade}${M.sl.mmr != null ? ' &middot; ' + (M.sl.mmr > 0 ? '+' : '') + M.sl.mmr + ' MMR' : ''}</b></div>` : ''}</div>`;
 
   // key points
   const kp = $('points');
@@ -271,6 +271,30 @@ function renderMatch(M, P, F) {
   const b = M.bench;
   $('bench').innerHTML = b.hero_games ? `<div class="kv"><div>All-rank ${M.hero} games<b>${num(b.hero_games)}</b></div><div>Win rate<b>${pct(b.hero_winrate)}</b></div><div>Avg deaths / game<b>${b.hero_deaths.toFixed(1)}</b></div><div>Avg net worth<b>${num(b.hero_nw)}</b></div><div>Avg accuracy<b>${pct(b.hero_acc)}</b> <span class="e">(you ${pct(M.kpi.acc)})</span></div>
    ${Object.keys(M.nw_z).map(p => `<div>Net worth @${p}% of game<b>${sgn(M.nw_z[p].z)} sd</b></div>`).join('')}</div>` : '<span class="sub">No benchmark data cached.</span>';
+}
+
+/* ---------------------------------------------------------------- Statlocker community panel */
+// Percentile bars: every bar is "better than X% of the community" (50 = average). Strengths on the left card, weaknesses on the right.
+function pctBars(container, rows, good) {
+  const W = 540, rowH = 34, m = { l: 8, r: 8, t: 6, b: 6 }, H = m.t + rows.length * rowH + m.b, s = svg(container, W, H);
+  const x = sc(0, 100, m.l, W - m.r);
+  el('line', { x1: x(50), x2: x(50), y1: m.t, y2: H - m.b, class: 'axis' }, s);
+  rows.forEach((r, i) => {
+    const y0 = m.t + i * rowH;
+    el('text', { x: m.l + 2, y: y0 + 11 }, s, r.name + '  ' + r.value).style.fontWeight = 600;
+    const bar = el('rect', { x: m.l, y: y0 + 16, width: Math.max(2, x(r.pct) - x(0)), height: 10, fill: good ? 'var(--win)' : 'var(--loss)', opacity: .85 }, s);
+    tip(bar, `${r.name}: ${r.value} - better than ${Math.round(r.pct)}% of the community`);
+    el('text', { x: Math.min(W - 40, x(r.pct) + 6), y: y0 + 25, class: 'mute' }, s, (r.pct >= 50 ? 'top ' + Math.max(1, Math.round(100 - r.pct)) + '%' : 'bottom ' + Math.max(1, Math.round(r.pct)) + '%'));
+  });
+}
+function communityPanel(c, C) {
+  const hint = (r) => r.hint ? `<div class="pt ${r.pct >= 50 ? 'good' : 'bad'}"><b>${r.name}</b><span class="e">${r.hint}</span></div>` : '';
+  c.innerHTML = `<div class="sub">Statlocker snapshot from ${C.captured}: ${C.rank.in_game}; Statlocker rates you ${C.rank.statlocker} (${C.rank.pp} PP).
+    Laning at 9:00: ${C.laning.wins} wins / ${C.laning.draws} draws / ${C.laning.losses} losses over ${C.laning.lanes} lanes.</div>
+    <div class="cols"><div class="card"><h3>Strengths vs the community</h3><div id="cm-good"></div></div><div class="card"><h3>Weaknesses vs the community</h3><div id="cm-bad"></div></div></div>
+    <div class="card" style="margin-top:12px"><h3>What these suggest</h3>${C.strengths.map(hint).join('')}${C.weaknesses.map(hint).join('')}
+    <div class="sub" style="margin:8px 0 0">${C.meta.sample}. ${C.meta.caveat}</div></div>`;
+  pctBars($('cm-good'), C.strengths, true); pctBars($('cm-bad'), C.weaknesses, false);
 }
 
 /* ---------------------------------------------------------------- overview */
@@ -322,7 +346,9 @@ function renderOverview(O) {
 
   // games table
   tbl($('games'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.id}</a>`, l: 1 }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'Lane', f: g => g.lane, l: 1 }, { h: 'Result', f: g => `${g.win ? 'W' : 'L'} ${mm(g.dur)}` }, { h: 'KDA', f: g => g.kda.join('/') },
-    { h: 'Deaths vs mates', f: g => g.kpi.deaths + ' vs ' + g.kpi.mate_deaths.toFixed(1) }, { h: 'Souls/min', f: g => num(g.kpi.spm) }, { h: 'Mid boss', f: g => g.kpi.midboss_mine + '/' + g.kpi.midboss_total }], G);
+    { h: 'Deaths vs mates', f: g => g.kpi.deaths + ' vs ' + g.kpi.mate_deaths.toFixed(1) }, { h: 'Souls/min', f: g => num(g.kpi.spm) }, { h: 'Mid boss', f: g => g.kpi.midboss_mine + '/' + g.kpi.midboss_total },
+    ...(O.community ? [{ h: 'Match rank', f: g => g.sl ? g.sl.mvp + '/12' : '-' }, { h: 'Grade', f: g => g.sl ? g.sl.grade : '-' }, { h: 'MMR', f: g => g.sl && g.sl.mmr != null ? (g.sl.mmr > 0 ? '+' : '') + g.sl.mmr : '-' }] : [])], G);
+  if (O.community) communityPanel($('community'), O.community);
 
   seasonMap($('c-seasonmap'), O.deaths);
   const ed = O.deaths.filter(d => d.side === 'enemy').length;

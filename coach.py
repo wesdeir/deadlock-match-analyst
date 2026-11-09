@@ -24,7 +24,8 @@ def _f(v, d=1):
     return "n/a" if v is None else f"{v:.{d}f}"
 
 
-def season_brief(records, ov):
+def season_brief(records, ov, community=None, sl=None):
+    sl = sl or {}
     n = len(records)
     wins = sum(1 for m in records if m["win"])
     L = [f"# Deadlock coaching request: season overview", "", ASK_SEASON, "",
@@ -47,18 +48,29 @@ def season_brief(records, ov):
         L.append(f"| {m['id']} | {m['hero']} | {'W' if m['win'] else 'L'} {mmss(m['dur'])} | {'/'.join(map(str, m['kda']))} | {k['deaths']} vs {k['mate_deaths']:.1f} | {k['spm']:,.0f} | "
                  f"{k['midboss_mine']}/{k['midboss_total']} | {'; '.join(flags) or '-'} |")
     mb = [m for m in records if m["kpi"]["midboss_total"]]
+    if community:
+        o, lan = community["overview"], community["laning"]
+        L += ["", f"## Statlocker snapshot ({community['captured']})",
+              f"- Rank: {community['rank']['in_game']}; Statlocker rating {community['rank']['statlocker']} ({community['rank']['pp']} PP). "
+              f"Laning at 9:00: {lan['wins']} wins / {lan['draws']} draws / {lan['losses']} losses in {lan['lanes']} lanes.",
+              "- Strengths vs the community (better than X% of players): " + "; ".join(f"{r['name']} {r['value']} ({r['pct']:.0f}%)" for r in community["strengths"]),
+              "- Weaknesses vs the community: " + "; ".join(f"{r['name']} {r['value']} ({r['pct']:.0f}%)" for r in community["weaknesses"]),
+              f"- Caveat: {community['meta']['caveat']}"]
+        grades = [f"{m['id']}: {sl[m['id']]['grade']} (rank {sl[m['id']]['mvp']}/12" + (f", {sl[m['id']]['mmr']:+d} MMR" if sl[m['id']]['mmr'] is not None else "") + ")" for m in records if m["id"] in sl]
+        L.append("- Statlocker match rank and grade per game: " + "; ".join(grades))
     L += ["", "## Team-level",
           f"- My team claimed every mid boss in {sum(1 for m in mb if m['kpi']['midboss_mine'] == m['kpi']['midboss_total'])} of {len(mb)} games; the enemy claimed every one in {sum(1 for m in mb if m['kpi']['midboss_mine'] == 0)}.",
           f"- Deaths in enemy territory: {sum(1 for m in records for d in m['deaths'] if d['side'] == 'enemy')} of {sum(len(m['deaths']) for m in records)}.", ""]
     return "\n".join(L)
 
 
-def match_brief(m, points, focus):
+def match_brief(m, points, focus, sl=None):
     k = m["kpi"]
     L = [f"# Deadlock coaching request: match {m['id']}", "", ASK_MATCH, "",
          f"## Result", f"{m['hero']} - {'WIN' if m['win'] else 'LOSS'} - {mmss(m['dur'])} - {m['lane']} lane with {', '.join(m['lane_mate']) or 'nobody'} vs {' + '.join(m['lane_opp'])}. "
          f"KDA {'/'.join(map(str, m['kda']))}, net worth {m['nw']:,}, {k['spm']:,.0f} souls/min.", "",
-         "My current recurring focus areas: " + (", ".join(f["title"] for f in focus) or "none yet"), "",
+         "My current recurring focus areas: " + (", ".join(f["title"] for f in focus) or "none yet"),
+         (f"Statlocker for this game: rank {sl['mvp']}/12, grade {sl['grade']}" + (f", {sl['mmr']:+d} MMR" if sl['mmr'] is not None else "") if sl else ""), "",
          "## Key points the tool found"]
     for p in points["problems"]:
         L.append(f"- PROBLEM{' (recurring)' if p['recurring'] else ''}: {p['title']} - {p['evidence']}")

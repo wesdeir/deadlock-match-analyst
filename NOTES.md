@@ -72,3 +72,13 @@ Team-level: the enemy claimed every mid boss in all 5 losses; my team claimed bo
   from a GitHub Pages page, no Python) is feasible - it would need the analysis ported to JS.
 - Rate limits: match history is 100/s for stored history but only 10/h for accounts friends with an API bot - `watch.py`
   polls every 7 min (min 6) to stay under both.
+
+## Statlocker snapshot (added 2026-11-08)
+- `data/statlocker_snapshot.json` holds a hand-captured copy of my own Statlocker profile: rank, 54 community percentiles
+  (Performance -> vs Community), laning summary, and per-game match rank / grade / MMR change. Games are matched to ours by
+  score line + duration (all 11 matched). The overview shows strengths/weaknesses; match pages show rank, grade and MMR.
+- It is NOT fetched automatically (Statlocker needs a sign-in and is another site's data/models). To refresh it: sign in to
+  Statlocker in Claude's built-in browser and ask Claude to "update the Statlocker snapshot" - it reads the profile's
+  Matches page (2 pages), Performance -> vs Community and Laning pages and rewrites the JSON.
+- Caveat: the "vs Community" panel seems to mix game modes (win rate 54.5% / KDA 3.11 vs the ranked overview's 40% / 2.47),
+  so its percentiles are indicative only. In-game rank is Sentinel III; Statlocker's own rating says Sentinel II (2331 PP).

@@ -18,6 +18,7 @@ import coach
 import insights
 import kpis
 import pages
+import statlocker
 
 DOCS = Path(__file__).parent / "docs"
 
@@ -59,11 +60,14 @@ def main():
     ov = insights.overview(records)
     recurring = {f["id"] for f in ov["focus"][:3]}
     focus3 = [{"id": f["id"], "title": f["title"]} for f in ov["focus"][:3]]
-    season_text = coach.season_brief(records, ov)
+    snap = statlocker.load()  # optional: community percentiles + per-game grade/MMR from Statlocker
+    sl = statlocker.match_games(records, snap) if snap else {}
+    community = statlocker.community(snap) if snap else None
+    season_text = coach.season_brief(records, ov, community, sl)
     out = []
     if args.what in ("overview", "all", "coach"):
         if args.what != "coach":
-            out.append(pages.overview_page(records, ov, season_text))
+            out.append(pages.overview_page(records, ov, season_text, community, sl))
         (DOCS / "coach").mkdir(parents=True, exist_ok=True)
         (DOCS / "coach" / "season.md").write_text(season_text, encoding="utf-8")
         out.append(DOCS / "coach" / "season.md")
@@ -76,11 +80,11 @@ def main():
                 sys.exit(f"Match {args.match_id} is not a cached ranked match of this season.")
         for r in targets:
             pts = insights.match_points(r, recurring)
-            text = coach.match_brief(r, pts, focus3)
+            text = coach.match_brief(r, pts, focus3, sl.get(r['id']))
             (DOCS / "coach").mkdir(parents=True, exist_ok=True)
             (DOCS / "coach" / f"match_{r['id']}.md").write_text(text, encoding="utf-8")
             if args.what != "coach":
-                out.append(pages.match_page(r, pts, focus3, records, text))
+                out.append(pages.match_page(r, pts, focus3, records, text, sl.get(r['id'])))
             out.append(DOCS / "coach" / f"match_{r['id']}.md")
     for o in out:
         print("wrote", o)

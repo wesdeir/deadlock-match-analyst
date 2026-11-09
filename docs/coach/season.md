@@ -49,6 +49,13 @@ Ranked season so far: 11 games, 4 win(s), 7 loss(es). Heroes: Celeste x10, Wrait
 | 134092208 | Celeste | L 33:48 | 4/9/8 | 9 vs 7.8 | 1,092 | 0/2 | Losing the lane |
 | 134114733 | Celeste | W 42:12 | 5/7/12 | 7 vs 6.0 | 1,077 | 3/3 | Defensive items arrive late; Slow to your first tier-3 item |
 
+## Statlocker snapshot (2026-11-08)
+- Rank: Sentinel III (350/1000 toward Sentinel IV); Statlocker rating Sentinel II (2331 PP). Laning at 9:00: 0 wins / 4 draws / 7 losses in 11 lanes.
+- Strengths vs the community (better than X% of players): Headshot Accuracy Percentage 29.1% (99%); Anti-Heal/Min 35.3 (95%); 2nd Half Damage 30k (85%); Damage Absorbed/Min 1.6k (81%); Hero Damage 40k (80%); Net Worth 45k (77%); 2nd Half Assists 9.7 (76%)
+- Weaknesses vs the community: Melee Damage % 1.3% (10%); Melee Kills % 3.9% (15%); Close-Range Damage % 23% (20%); 2nd Half Deaths 3.9 (27%); Close-Range Kills 1.9 (31%); 1st Half Kills 2.3 (32%); Last Hits/Min 2.4 (32%)
+- Caveat: This panel appears to mix game modes (its win rate 54.5% and KDA 3.11 do not match the ranked-only overview of 40% / 2.47), so treat the percentiles as indicative.
+- Statlocker match rank and grade per game: 132734913: D- (rank 8/12); 133285418: D (rank 9/12); 133338098: E+ (rank 11/12); 133808767: E+ (rank 10/12); 133897312: C- (rank 8/12); 133922932: A (rank 2/12); 133950231: D (rank 8/12); 133974993: S- (rank 1/12, +175 MMR); 134073565: C+ (rank 6/12, +350 MMR); 134092208: D (rank 9/12, -175 MMR); 134114733: C (rank 7/12, +350 MMR)
+
 ## Team-level
 - My team claimed every mid boss in 3 of 11 games; the enemy claimed every one in 7.
 - Deaths in enemy territory: 18 of 79.

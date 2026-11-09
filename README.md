@@ -82,6 +82,7 @@ The defaults are the author's own account.
 |---|---|
 | `analyze.py` | CLI for the dashboards (`match`, `overview`, `all`, `coach`) |
 | `watch.py` | polls for a finished match and rebuilds everything automatically |
+| `statlocker.py` | optional Statlocker snapshot (`data/statlocker_snapshot.json`): community percentiles + per-game grade/MMR shown on the pages |
 | `coach.py` | the Markdown briefs for Claude (also behind the "Copy for Claude" buttons) |
 | `kpis.py` | turns one match into a compact record + the habit measurements; saved to `data/matches/<id>.json` |
 | `insights.py` | the habits (thresholds, advice), per-match key points, focus areas, baseline-vs-recent trends |

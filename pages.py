@@ -47,11 +47,12 @@ OVERVIEW_BODY = """
 <h2 id="s-improve">Are you improving?</h2><p class="sub" id="trend-note"></p><div class="card" id="trend"></div>
 <h2 id="s-pattern">Habit pattern by game</h2><p class="sub">Red = flagged that game, green = fine. Click a game for its full breakdown.</p><div class="card" id="matrix"></div>
 <h2 id="s-map">Where you die</h2><p class="sub" id="seasonmap-note"></p><div class="card"><div class="mapwrap" id="c-seasonmap"></div></div>
+<h2 id="s-community">Versus the community (Statlocker)</h2><div id="community"></div>
 <h2 id="s-team">Team-level things you can influence</h2><div class="card" id="team"></div>
 <h2 id="s-games">Games</h2><div class="card" id="games"></div>
 <h2 id="s-heroes">By hero</h2><div class="card" id="heroes"></div>
 """
-OVERVIEW_CHIPS = [["s-focus", "Focus"], ["s-improve", "Improving?"], ["s-pattern", "Habit grid"], ["s-map", "Death map"], ["s-team", "Team"], ["s-games", "Games"], ["s-heroes", "Heroes"]]
+OVERVIEW_CHIPS = [["s-focus", "Focus"], ["s-improve", "Improving?"], ["s-pattern", "Habit grid"], ["s-map", "Death map"], ["s-community", "Community"], ["s-team", "Team"], ["s-games", "Games"], ["s-heroes", "Heroes"]]
 
 
 def nav_games(records):
@@ -62,7 +63,8 @@ def nav_games(records):
     return out
 
 
-def match_page(rec, points, focus, records, brief):
+def match_page(rec, points, focus, records, brief, sl=None):
+    rec = dict(rec, sl=sl)  # Statlocker numbers for this game (or None)
     script = (f"const M={_dump(rec)},P={_dump(points)},F={_dump(focus)};"
               f"renderNav({{page:'match',current:{rec['id']},games:{_dump(nav_games(records))},chips:{_dump(MATCH_CHIPS)},brief:{_dump(brief)}}});renderMatch(M,P,F);")
     out = DOCS / "matches" / f"{rec['id']}.html"
@@ -71,14 +73,16 @@ def match_page(rec, points, focus, records, brief):
     return out
 
 
-def overview_page(records, ov, brief):
+def overview_page(records, ov, brief, community=None, sl=None):
+    sl = sl or {}
     games = []
     for m in records:
         ev = {r["id"]: {"value": r["value"], "flag": r["flag"]} for r in insights.evaluate(m)}
         games.append({"id": m["id"], "calib": m["calib"], "win": m["win"], "hero": m["hero"], "lane": m["lane"], "dur": m["dur"], "kda": m["kda"],
-                      "kpi": {k: m["kpi"][k] for k in ("deaths", "mate_deaths", "spm", "midboss_mine", "midboss_total")}, "habits": ev})
+                      "kpi": {k: m["kpi"][k] for k in ("deaths", "mate_deaths", "spm", "midboss_mine", "midboss_total")}, "habits": ev,
+                      "sl": sl.get(m["id"])})
     deaths = [{"x": d["x"], "y": d["y"], "t": d["t"], "side": d["side"], "killer": d["killer"], "game": m["id"]} for m in records for d in m["deaths"]]
-    data = {"games": games, "ov": ov, "rules": insights.rules(), "built": datetime.date.today().isoformat(), "deaths": deaths}
+    data = {"games": games, "ov": ov, "rules": insights.rules(), "built": datetime.date.today().isoformat(), "deaths": deaths, "community": community}
     script = (f"const O={_dump(data)};renderNav({{page:'overview',current:0,games:{_dump(nav_games(records))},chips:{_dump(OVERVIEW_CHIPS)},brief:{_dump(brief)}}});renderOverview(O);")
     out = DOCS / "index.html"
     out.write_text(HEAD.format(title="Deadlock season overview", base="") + OVERVIEW_BODY + TAIL.format(base="", script=script), encoding="utf-8")
