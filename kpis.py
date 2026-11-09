@@ -15,7 +15,7 @@ import extras
 
 HERE = Path(__file__).parent
 OUT_DIR = HERE / "data" / "matches"
-SCHEMA = 4  # bump when the record layout/KPI definitions change (forces a rebuild)
+SCHEMA = 5  # bump when the record layout/KPI definitions change (forces a rebuild)
 
 NEAR = 2500  # map units: "near" means within this distance
 EARLY_S = 600  # lane-phase cutoff for "early deaths"
@@ -128,6 +128,8 @@ def compute(match_id, hist_row, names, hero_cache=None):
             "caught": al == 0 or en >= al + 2,  # alone, or outnumbered by 2+
             "hp": [hp[max(0, min(len(hp) - 1, t - o))] for o in (20, 10, 5, 2)] if hp else [],
             "x": round(dd["death_pos"]["x"]), "y": round(dd["death_pos"]["y"]),
+            # which half of the map: team 0's base is at negative y, team 1's at positive y
+            "side": "own" if (dd["death_pos"]["y"] < 0) == (me["team"] == 0) else "enemy",
         })
 
     # ---- fights
@@ -275,7 +277,7 @@ def compute(match_id, hist_row, names, hero_cache=None):
 
     return {
         "schema": SCHEMA, "id": match_id, "calib": hist_row.get("ranked_calibration_match") or 0, "start": mi["start_time"],
-        "hero": names.hero(me["hero_id"]), "hero_id": me["hero_id"], "win": win, "dur": dur, "lane": extras.lane_name(names, me["assigned_lane"]),
+        "hero": names.hero(me["hero_id"]), "hero_id": me["hero_id"], "team": me["team"], "win": win, "dur": dur, "lane": extras.lane_name(names, me["assigned_lane"]),
         "kda": [me["kills"], me["deaths"], me["assists"]], "nw": me["net_worth"], "lh": me["last_hits"], "denies": me["denies"], "level": me["level"],
         "lane_opp": [names.hero(p["hero_id"]) for p in lane_opp], "lane_mate": [names.hero(p["hero_id"]) for p in lane_mate],
         "board": board,

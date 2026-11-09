@@ -89,14 +89,40 @@ function laneDuo(c, M) {
   legend(c, [['var(--accent)', 'your duo'], ['var(--even)', 'typical duo (mean, band = 1 sd)']]);
 }
 
+/* ---- map: the Deadlock minimap, with game coordinates mapped as left=(x+R)/2R, top=(R-y)/2R (R=10752).
+   Verified against spawns (team 0 at the bottom base, team 1 at the top) and lane positions (lane 1 left, 4 centre, 6 right). */
+const MAP_R = 10752, MAP_REMOTE = 'https://assets-bucket.deadlock-api.com/assets-api-res/images/maps/minimap_midtown_mid.png';
+const mapX = (x, S) => (x + MAP_R) / (2 * MAP_R) * S, mapY = (y, S) => (MAP_R - y) / (2 * MAP_R) * S;
+function mapSvg(container, S, labels) {
+  const s = svg(container, S, S);
+  const id = 'mf' + Math.random().toString(36).slice(2, 7), defs = el('defs', {}, s);
+  const f = el('filter', { id, 'color-interpolation-filters': 'sRGB', x: 0, y: 0, width: 1, height: 1 }, defs);
+  el('feColorMatrix', { type: 'matrix', values: '0 0 0 0 0.42  0 0 0 0 0.45  0 0 0 0 0.56  -0.95 0 0 0 0.95' }, f);
+  el('rect', { x: 0, y: 0, width: S, height: S, fill: '#0b0b11', stroke: 'var(--line)' }, s);
+  const im = el('image', { href: (window.ASSET_BASE || '') + 'assets/map.png', x: 0, y: 0, width: S, height: S, filter: `url(#${id})` }, s);
+  im.addEventListener('error', () => im.setAttribute('href', MAP_REMOTE), { once: true });
+  const lab = (t, x, y, anchor) => el('text', { x: x * S, y: y * S, 'text-anchor': anchor || 'middle', class: 'mute', style: 'font-size:10px;letter-spacing:.15em;opacity:.8' }, s, t);
+  lab('YORK', 0.17, 0.52); lab('BROADWAY', 0.5, 0.52); lab('GREENWICH', 0.85, 0.52);
+  lab(labels[0], 0.56, 0.03); lab(labels[1], 0.44, 0.995);
+  return s;
+}
 function deathMap(c, M) {
-  const S = 420, m = 26, s = svg(c, S, S), D = M.deaths;
-  const lim = Math.max(1, ...D.flatMap(d => [Math.abs(d.x), Math.abs(d.y)])) * 1.1;
-  const x = sc(-lim, lim, m, S - m), y = sc(-lim, lim, S - m, m);
-  el('rect', { x: m, y: m, width: S - 2 * m, height: S - 2 * m, class: 'axis' }, s);
-  el('line', { x1: x(0), x2: x(0), y1: m, y2: S - m, class: 'axis' }, s); el('line', { x1: m, x2: S - m, y1: y(0), y2: y(0), class: 'axis' }, s);
-  D.forEach((d, i) => { const n = el('circle', { cx: x(d.x), cy: y(d.y), r: 7, fill: d.caught ? 'var(--loss)' : 'var(--warn)', 'fill-opacity': .85 }, s); tip(n, `#${i + 1} ${mm(d.t)} - ${d.killer}`); el('text', { x: x(d.x), y: y(d.y) + 4, 'text-anchor': 'middle', style: 'fill:#fff;font-weight:700' }, s, i + 1); });
-  legend(c, [['var(--loss)', 'died alone or outnumbered'], ['var(--warn)', 'died with allies near']]);
+  const S = 520, s = mapSvg(c, S, M.team === 1 ? ['YOUR BASE', 'ENEMY BASE'] : ['ENEMY BASE', 'YOUR BASE']);
+  M.deaths.forEach((d, i) => {
+    const cx = mapX(d.x, S), cy = mapY(d.y, S);
+    const n = el('circle', { cx, cy, r: 10, fill: d.side === 'enemy' ? 'var(--loss)' : 'var(--brand)', 'fill-opacity': .92, stroke: d.caught ? '#fff' : 'rgba(0,0,0,.5)', 'stroke-width': d.caught ? 2 : 1 }, s);
+    tip(n, `#${i + 1} ${mm(d.t)} - killed by ${d.killer} (${d.side === 'enemy' ? 'enemy' : 'your'} half${d.caught ? ', alone/outnumbered' : ''})`);
+    el('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', style: 'fill:#000;font-weight:700;font-size:11px;pointer-events:none' }, s, i + 1);
+  });
+  legend(c, [['var(--loss)', 'died in enemy territory'], ['var(--brand)', 'died on your half'], ['#fff', 'white ring = alone / outnumbered']]);
+}
+function seasonMap(c, deaths) {
+  const S = 560, s = mapSvg(c, S, ['TEAM 1 BASE (top)', 'TEAM 0 BASE (bottom)']);
+  for (const d of deaths) {
+    const n = el('circle', { cx: mapX(d.x, S), cy: mapY(d.y, S), r: 8, fill: d.side === 'enemy' ? 'var(--loss)' : 'var(--brand)', 'fill-opacity': .42, stroke: 'none' }, s);
+    tip(n, `${d.game} ${mm(d.t)} - ${d.killer}${d.side === 'enemy' ? ' (enemy half)' : ' (your half)'}`);
+  }
+  legend(c, [['var(--loss)', 'died in enemy territory'], ['var(--brand)', 'died on your half'], ['var(--even)', 'brighter = more deaths in the same spot']]);
 }
 
 function dmgBars(c, M) {
@@ -174,6 +200,36 @@ function tbl(container, cols, rows, opts) {
   t.innerHTML = '<tr>' + cols.map(c => `<th class="${c.l ? 'l' : ''}">${c.h}</th>`).join('') + '</tr>' +
     rows.map(r => `<tr class="${(opts && opts.rowClass ? opts.rowClass(r) : '')}">` + cols.map(c => { const v = c.f(r); const cls = c.cls ? c.cls(r) : ''; return `<td class="${c.l ? 'l ' : ''}${cls}">${v}</td>`; }).join('') + '</tr>').join('');
   return t;
+}
+
+/* ---------------------------------------------------------------- navigation + copy-for-Claude */
+function copyText(text, btn) {
+  const flash = (msg) => { const o = btn.dataset.label || (btn.dataset.label = btn.textContent); btn.textContent = msg; setTimeout(() => (btn.textContent = o), 1800); };
+  const manual = () => {  // clipboard blocked (e.g. some embedded browsers): show the text selected so Ctrl+C works
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    box.innerHTML = '<div style="background:var(--panel);border:1px solid var(--brand);max-width:820px;width:100%;padding:14px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b style="font:700 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--brand)">Press Ctrl+C to copy, then paste into Claude</b><button style="background:var(--panel2);color:var(--ink);border:1px solid var(--line);cursor:pointer">Close</button></div><textarea style="width:100%;height:55vh;background:var(--bg);color:var(--ink);border:1px solid var(--line);font:12px var(--mono)"></textarea></div>';
+    const ta = box.querySelector('textarea'); ta.value = text; box.querySelector('button').onclick = () => box.remove(); box.onclick = (e) => { if (e.target === box) box.remove(); };
+    document.body.appendChild(box); ta.focus(); ta.select();
+  };
+  const fallback = () => { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } t.remove(); if (ok) flash('Copied!'); else manual(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => flash('Copied!'), fallback); else fallback();
+}
+function renderNav(o) {
+  const pre = o.page === 'match' ? '' : 'matches/', home = (o.page === 'match' ? '../' : '') + 'index.html';
+  const idx = o.games.findIndex(g => g.id === o.current), prev = o.games[idx - 1], next = o.games[idx + 1];
+  const opts = o.games.slice().reverse().map(g => `<option value="${g.id}" ${g.id === o.current ? 'selected' : ''}>${g.win ? 'W' : 'L'} · ${g.hero} · ${g.label}</option>`).join('');
+  const latest = o.games[o.games.length - 1];
+  const nav = $('nav');
+  nav.innerHTML = `<div class="row"><span class="brand">Deadlock <b>// Analyst</b></span>
+   <div class="links"><a class="nl ${o.page === 'overview' ? 'on' : ''}" href="${home}">Overview</a><a class="nl ${o.current === (latest || {}).id ? 'on' : ''}" href="${pre}${latest ? latest.id : ''}.html">Latest match</a></div>
+   <span class="sp"></span>
+   ${o.page === 'match' ? `<div class="pn">${prev ? `<a href="${prev.id}.html" title="Previous game">&lsaquo; prev</a>` : ''}${next ? `<a href="${next.id}.html" title="Next game">next &rsaquo;</a>` : ''}</div>` : ''}
+   <select id="gamesel" title="Jump to a game"><option value="">Games&hellip;</option>${opts}</select>
+   <button class="cp" id="cpbtn" title="Copy a summary to paste into Claude">Copy for Claude</button></div>
+   ${o.chips && o.chips.length ? `<div class="chips">${o.chips.map(([id, t]) => `<a href="#${id}">${t}</a>`).join('')}</div>` : ''}`;
+  $('gamesel').onchange = (e) => { if (e.target.value) location.href = pre + e.target.value + '.html'; };
+  $('cpbtn').onclick = (e) => copyText(o.brief, e.target);
 }
 
 /* ---------------------------------------------------------------- per-match page */
@@ -268,6 +324,9 @@ function renderOverview(O) {
   tbl($('games'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.id}</a>`, l: 1 }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'Lane', f: g => g.lane, l: 1 }, { h: 'Result', f: g => `${g.win ? 'W' : 'L'} ${mm(g.dur)}` }, { h: 'KDA', f: g => g.kda.join('/') },
     { h: 'Deaths vs mates', f: g => g.kpi.deaths + ' vs ' + g.kpi.mate_deaths.toFixed(1) }, { h: 'Souls/min', f: g => num(g.kpi.spm) }, { h: 'Mid boss', f: g => g.kpi.midboss_mine + '/' + g.kpi.midboss_total }], G);
 
+  seasonMap($('c-seasonmap'), O.deaths);
+  const ed = O.deaths.filter(d => d.side === 'enemy').length;
+  $('seasonmap-note').textContent = `${ed} of ${O.deaths.length} deaths (${pct(ed / Math.max(1, O.deaths.length))}) happened in enemy territory; hover a dot for the game, time and killer.`;
   // by hero
   const by = {}; G.forEach(g => { (by[g.hero] = by[g.hero] || []).push(g); });
   tbl($('heroes'), [{ h: 'Hero', f: r => r[0], l: 1 }, { h: 'Games', f: r => r[1].length }, { h: 'W-L', f: r => r[1].filter(g => g.win).length + '-' + r[1].filter(g => !g.win).length },

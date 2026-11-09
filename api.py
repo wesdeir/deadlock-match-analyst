@@ -90,3 +90,26 @@ def cached_match_metadata(match_id: int):
     """Match metadata from the disk cache only (never touches the network); None if not cached."""
     path = _cache_path(f"{API}/v1/matches/{match_id}/metadata")
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+MAP_URL = "https://assets-bucket.deadlock-api.com/assets-api-res/images/maps/minimap_midtown_mid.png"
+
+
+def ensure_map_image(dest: Path):
+    """Download the minimap PNG once (kept out of git); returns True if it is available locally."""
+    if dest.exists():
+        return True
+    try:
+        d = get_json(f"{API}/v1/assets/map") or {}
+        url = d.get("images", {}).get("minimap", MAP_URL)
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            b = r.read()
+        if b[:8] != b"\x89PNG\r\n\x1a\n":
+            return False
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b)
+        return True
+    except Exception as e:  # the map is cosmetic
+        print("map image not downloaded:", e)
+        return False

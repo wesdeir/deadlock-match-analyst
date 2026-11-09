@@ -7,3 +7,9 @@ __pycache__/
 
 # local tooling
 .claude/
+
+# Valve map art: downloaded locally by analyze.py, not redistributed in the repo (pages fall back to the API asset URL)
+docs/assets/map.png
+
+# watcher state (local)
+data/watch_state.json

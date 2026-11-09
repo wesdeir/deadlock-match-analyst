@@ -2,19 +2,24 @@
 
   python analyze.py match [ID]    # per-match page for ID (default: your latest ranked match this season)
   python analyze.py overview      # season overview: focus areas + are-you-improving tracker
-  python analyze.py all           # rebuild every page
+  python analyze.py all           # rebuild every page (+ the coach briefs)
+  python analyze.py coach [ID]    # only write the Markdown briefs to paste into Claude (docs/coach/)
   add --refresh to fetch new matches first (rate-limit safe: stops politely on a 429)
 
 Output goes to docs/ (open docs/index.html). Pages are plain HTML and work offline.
 """
 import argparse
 import sys
+from pathlib import Path
 
 import api
 import analyst
+import coach
 import insights
 import kpis
 import pages
+
+DOCS = Path(__file__).parent / "docs"
 
 
 def load_records(history, names, refresh=False, max_fetch=2):
@@ -41,7 +46,7 @@ def load_records(history, names, refresh=False, max_fetch=2):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["match", "overview", "all"])
+    ap.add_argument("what", choices=["match", "overview", "all", "coach"])
     ap.add_argument("match_id", nargs="?", type=int)
     ap.add_argument("--refresh", action="store_true", help="refresh match history and download missing season matches first")
     args = ap.parse_args()
@@ -50,13 +55,19 @@ def main():
     records = load_records(history, names, args.refresh)
     if not records:
         sys.exit("No season matches with metadata yet.")
+    api.ensure_map_image(DOCS / "assets" / "map.png")  # cosmetic; pages fall back to the remote image
     ov = insights.overview(records)
     recurring = {f["id"] for f in ov["focus"][:3]}
     focus3 = [{"id": f["id"], "title": f["title"]} for f in ov["focus"][:3]]
+    season_text = coach.season_brief(records, ov)
     out = []
-    if args.what in ("overview", "all"):
-        out.append(pages.overview_page(records, ov))
-    if args.what in ("match", "all"):
+    if args.what in ("overview", "all", "coach"):
+        if args.what != "coach":
+            out.append(pages.overview_page(records, ov, season_text))
+        (DOCS / "coach").mkdir(parents=True, exist_ok=True)
+        (DOCS / "coach" / "season.md").write_text(season_text, encoding="utf-8")
+        out.append(DOCS / "coach" / "season.md")
+    if args.what in ("match", "all", "coach"):
         if args.what == "all":
             targets = records
         else:
@@ -64,7 +75,13 @@ def main():
             if not targets:
                 sys.exit(f"Match {args.match_id} is not a cached ranked match of this season.")
         for r in targets:
-            out.append(pages.match_page(r, insights.match_points(r, recurring), focus3))
+            pts = insights.match_points(r, recurring)
+            text = coach.match_brief(r, pts, focus3)
+            (DOCS / "coach").mkdir(parents=True, exist_ok=True)
+            (DOCS / "coach" / f"match_{r['id']}.md").write_text(text, encoding="utf-8")
+            if args.what != "coach":
+                out.append(pages.match_page(r, pts, focus3, records, text))
+            out.append(DOCS / "coach" / f"match_{r['id']}.md")
     for o in out:
         print("wrote", o)
 

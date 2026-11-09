@@ -27,6 +27,31 @@ python analyze.py all --refresh  # fetch new matches first
 The per-match endpoint allows only ~3 requests per hour, so `refresh.py` downloads at most 2 matches per run and stops
 politely if rate limited (see `NOTES.md`). Already-downloaded matches are cached and committed.
 
+## Automatic mode: run it when a game ends
+```bash
+python watch.py --open      # leave it running while you play
+```
+It checks your match history every 7 minutes (gentle on the API's limits). When a new ranked match appears it downloads
+it (respecting the 3-per-hour limit), rebuilds every page and opens the new match page. To start it at login on Windows,
+add a Task Scheduler task (run `taskschd.msc`, trigger "At log on", action `pythonw` with arguments
+`C:\path\to\watch.py --open`, start in the repo folder). `python watch.py --once` does a single check, handy for a
+scheduled task that runs every few minutes instead.
+
+## Using it with Claude
+- **Pages -> Claude:** every page has a **Copy for Claude** button (top right) that copies a compact summary of that page
+  plus a coaching prompt; paste it into any Claude chat and ask for teaching points. The same text is saved as
+  `docs/coach/season.md` and `docs/coach/match_<id>.md` (`python analyze.py coach`).
+- **In Claude Code:** open this repo and say e.g. "refresh and analyze my latest game" - it can run `refresh.py`, read the
+  briefs / `data/matches/*.json`, and coach from the real data.
+
+## Publish as a website (GitHub Pages, free)
+The site is just the `docs/` folder. In the GitHub repo: **Settings -> Pages -> Build and deployment -> Source: Deploy
+from a branch -> Branch `main`, folder `/docs` -> Save**. It appears at
+`https://<your-username>.github.io/deadlock-match-analyst/` after a minute. (Free Pages needs a public repo.) The
+published pages contain your match data, so only publish if you are happy with that. The map image is Valve's art, so it
+is not stored in the repo: the pages load it from the Deadlock API's asset server (and use a local copy if you have run
+`analyze.py`).
+
 ## How "improving" is measured
 Seven habits are measured the same way in every game (`insights.py`): deaths vs your teammates, lane-phase deaths,
 being first to die in fights, defensive items by 20:00, time to your first tier-3 item, lane performance vs a typical
@@ -55,7 +80,9 @@ The defaults are the author's own account.
 ## Files
 | file | purpose |
 |---|---|
-| `analyze.py` | CLI for the dashboards (`match`, `overview`, `all`) |
+| `analyze.py` | CLI for the dashboards (`match`, `overview`, `all`, `coach`) |
+| `watch.py` | polls for a finished match and rebuilds everything automatically |
+| `coach.py` | the Markdown briefs for Claude (also behind the "Copy for Claude" buttons) |
 | `kpis.py` | turns one match into a compact record + the habit measurements; saved to `data/matches/<id>.json` |
 | `insights.py` | the habits (thresholds, advice), per-match key points, focus areas, baseline-vs-recent trends |
 | `pages.py` | writes the HTML pages; chart code is in `docs/assets/lib.js` / `lib.css` |

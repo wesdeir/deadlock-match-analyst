@@ -61,3 +61,14 @@ Goal: analyse one match at a time, and now and then pick a few habits to work on
 1. Defensive items late (flagged 6/6; experiment: resist matched to the damage taken by ~15:00).
 2. Dying more than teammates (games 1 and 3). 3. Slow first tier-3 (games 1 and 7).
 Team-level: the enemy claimed every mid boss in all 5 losses; my team claimed both in the one win.
+
+## Map, look and automation (added 2026-11-08, later)
+- Map overlay: minimap PNG from `/v1/assets/map` (1024x1024, kept out of git - Valve art; pages fall back to the remote
+  URL). Game -> image: `left=(x+R)/2R, top=(R-y)/2R`, `R=10752`. Verified: spawns (team 0 bottom base, team 1 top base) and
+  lanes (assigned_lane 1 = left/York, 4 = centre/Broadway, 6 = right/Greenwich). Deaths carry `side` (own/enemy half).
+- Theme: single dark "HUD" theme in `docs/assets/lib.css`; sticky nav (overview, latest match, prev/next, game picker,
+  section chips, Copy for Claude).
+- `api.deadlock-api.com` sends `access-control-allow-origin: *`, so a future browser-only tool (fetch the API straight
+  from a GitHub Pages page, no Python) is feasible - it would need the analysis ported to JS.
+- Rate limits: match history is 100/s for stored history but only 10/h for accounts friends with an API bot - `watch.py`
+  polls every 7 min (min 6) to stay under both.
