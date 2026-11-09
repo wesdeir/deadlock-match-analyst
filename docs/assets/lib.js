@@ -16,6 +16,13 @@ function onResize(fn) {
   let w0 = innerWidth, t;
   addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (Math.abs(innerWidth - w0) > 100) { w0 = innerWidth; fn ? fn() : location.reload(); } }, 250); });
 }
+/* Hero portrait <img> for a hero name ('icon' = small round portrait, 'card' = large art). '' if there is no art for it. */
+function hi(name, kind) {
+  const e = (window.HEROES || {})[name], k = kind || 'icon';
+  return e && e[k] ? `<img class="hi ${k}" src="${window.ASSET_BASE || ''}${e[k]}" alt="" loading="lazy">` : '';
+}
+/* Portrait followed by the hero's name, for table cells and lists. */
+function hn(name) { return `<span class="hn">${hi(name)}${name}</span>`; }
 /* Create an HTML element with attributes and inner HTML, appended to `parent`. */
 function h(tag, attrs, html, parent) {
   const e = document.createElement(tag);
@@ -141,12 +148,14 @@ function seasonMap(c, deaths) {
 
 /* Stacked bars: damage taken from each enemy, split into bullet / ability / melee. */
 function dmgBars(c, M) {
-  const W = fitW(c, 540), rowH = 26, m = { l: 90, r: 70, t: 22, b: 6 }, rows = M.dmg, H = m.t + rows.length * rowH + m.b, s = svg(c, W, H);
+  const W = fitW(c, 540), rowH = 26, m = { l: 118, r: 70, t: 22, b: 6 }, rows = M.dmg, H = m.t + rows.length * rowH + m.b, s = svg(c, W, H);
   const mx = Math.max(...rows.map(d => d.bullet + d.ability + d.melee), 1), x = sc(0, mx, m.l, W - m.r);
   el('text', { x: 4, y: 13 }, s, 'Damage you took, by enemy and type').style.fontWeight = 600;
   rows.forEach((d, i) => {
     const y0 = m.t + i * rowH, tot = d.bullet + d.ability + d.melee || 1;
     el('text', { x: m.l - 6, y: y0 + 16, 'text-anchor': 'end' }, s, d.hero);
+    const ic = (window.HEROES || {})[d.hero];
+    if (ic && ic.icon) el('image', { href: (window.ASSET_BASE || '') + ic.icon, x: m.l - 6 - 24 - d.hero.length * 6.4, y: y0 + 1, width: 22, height: 22 }, s);
     let cx = m.l;
     for (const [v, col, n] of [[d.bullet, 'var(--bullet)', 'bullet'], [d.ability, 'var(--ability)', 'ability / other'], [d.melee, 'var(--melee)', 'melee']]) {
       const w = x(v) - x(0); const r = el('rect', { x: cx, y: y0 + 4, width: Math.max(0, w), height: 16, fill: col }, s); tip(r, `${d.hero} ${n}: ${num(v)} (${pct(v / tot)})`); cx += w;
@@ -241,7 +250,7 @@ function renderNav(o) {
   const idx = o.games.findIndex(g => g.id === o.current), prev = o.games[idx - 1], next = o.games[idx + 1];
   const latest = o.games[o.games.length - 1];
   const dots = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => `<circle cx="${3 + c * 6}" cy="${3 + r * 6}" r="1.7"/>`)).join('');
-  const gameLinks = o.games.slice().reverse().map(g => `<a href="${pre}${g.id}.html" class="${g.id === o.current ? 'on' : ''}"><i class="dot ${g.win ? 'w' : 'l'}"></i>${g.hero}<span class="mute">${g.label}</span></a>`).join('');
+  const gameLinks = o.games.slice().reverse().map(g => `<a href="${pre}${g.id}.html" class="${g.id === o.current ? 'on' : ''}"><i class="dot ${g.win ? 'w' : 'l'}"></i>${hn(g.hero)}<span class="mute">${g.label}</span></a>`).join('');
   const secLinks = (o.chips || []).map(([id, t]) => `<a href="#${id}" data-sec="${id}">${t}</a>`).join('');
   $('nav').innerHTML = `<div class="row">
     <button class="wf" id="wf" aria-label="Open navigation menu" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">${dots}</svg></button>
@@ -270,11 +279,19 @@ function renderNav(o) {
 /* ---------------------------------------------------------------- per-match page */
 function renderMatch(M, P, F) {
   const date = new Date(M.start * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-  $('head').innerHTML = `<h1>${M.hero} <span class="pill ${M.win ? 'win' : 'loss'}">${M.win ? 'WIN' : 'LOSS'}</span> <span style="font-weight:400;color:var(--mute);font-size:15px">match ${M.id}${M.calib ? ' &middot; calibration game ' + M.calib : ''}</span></h1>
-   <div class="sub">${date} &middot; ${mm(M.dur)} &middot; ${M.lane} lane with ${M.lane_mate.join(', ') || 'nobody'} vs ${M.lane_opp.join(' + ')}</div>
+  $('head').innerHTML = `<div class="banner ${M.win ? 'win' : 'loss'}">${hi(M.hero, 'card')}
+   <div class="bt"><div class="result">${M.win ? 'Victory' : 'Defeat'}</div><h1>${M.hero}</h1>
+    <div class="sub">${date} &middot; ${mm(M.dur)} &middot; match ${M.id}${M.calib ? ' (calibration game ' + M.calib + ')' : ''}<br>${M.lane} lane with ${M.lane_mate.map(hn).join(', ') || 'nobody'} vs ${M.lane_opp.map(hn).join(' + ')}</div></div>
    <div class="kv"><div>KDA<b>${M.kda.join(' / ')}</b></div><div>Net worth<b>${num(M.nw)}</b></div><div>Souls / min<b>${num(M.kpi.spm)}</b></div><div>Last hits<b>${M.lh}</b></div>
-   <div>Deaths vs teammates<b>${M.kpi.deaths} vs ${M.kpi.mate_deaths.toFixed(1)}</b></div><div>Time dead<b>${pct(M.kpi.dead_pct)} <span style="font-weight:400;color:var(--mute)">(mates ${pct(M.kpi.mate_dead_pct)})</span></b></div>
-   <div>Mid boss<b>${M.kpi.midboss_mine}/${M.kpi.midboss_total} yours</b></div>${M.sl ? `<div>Statlocker<b>${M.sl.mvp}/12 &middot; ${M.sl.grade}${M.sl.mmr != null ? ' &middot; ' + (M.sl.mmr > 0 ? '+' : '') + M.sl.mmr + ' MMR' : ''}</b></div>` : ''}</div>`;
+   <div>Deaths vs teammates<b>${M.kpi.deaths} vs ${M.kpi.mate_deaths.toFixed(1)}</b></div><div>Time dead<b>${pct(M.kpi.dead_pct)} <small>(mates ${pct(M.kpi.mate_dead_pct)})</small></b></div>
+   <div>Mid boss<b>${M.kpi.midboss_mine}/${M.kpi.midboss_total} yours</b></div>${M.sl ? `<div>Statlocker<b>${M.sl.mvp}/12 &middot; ${M.sl.grade}${M.sl.mmr != null ? ' &middot; ' + (M.sl.mmr > 0 ? '+' : '') + M.sl.mmr + ' MMR' : ''}</b></div>` : ''}</div></div>`;
+
+  // Teams: both sides as portraits with K/D/A and a net-worth bar, so the match reads at a glance.
+  const maxNw = Math.max(...M.board.map(p => p.nw), 1);
+  const side = (ally, title) => `<div class="card team"><h3>${title}</h3>${M.board.filter(p => p.ally === ally).sort((a, b) => b.nw - a.nw).map(p =>
+    `<div class="pr${p.me ? ' me' : ''}">${hi(p.hero)}<div class="who"><b>${p.hero}${p.me ? ' (you)' : ''}</b><span>${p.lane}</span></div><div class="kda">${p.k}/${p.d}/${p.a}</div>
+      <div class="nwb" title="Net worth ${num(p.nw)}"><i style="width:${(p.nw / maxNw * 100).toFixed(1)}%"></i><em>${(p.nw / 1000).toFixed(1)}k</em></div></div>`).join('')}</div>`;
+  $('teams').innerHTML = side(true, 'Your team' + (M.win ? ' (won)' : ' (lost)')) + side(false, 'Enemy team' + (M.win ? ' (lost)' : ' (won)'));
 
   // Key points: three cards (work on / went well / try next). Evidence strings come from insights.py.
   const kp = $('points');
@@ -300,16 +317,14 @@ function renderMatch(M, P, F) {
   tbl($('t-deaths'), [
     { h: '#', f: d => M.deaths.indexOf(d) + 1, l: 1 },
     { h: 'Time', f: d => mm(d.t), l: 1 },
-    { h: 'Killed by', f: d => d.killer + (d.killer_lane ? ' (lane)' : ''), l: 1 },
+    { h: 'Killed by', f: d => hn(d.killer) + (d.killer_lane ? ' (lane)' : ''), l: 1 },
     { h: 'Your NW vs killer', f: d => d.nw_killer == null ? '-' : sgn((d.nw_me - d.nw_killer) / 1000) + 'k' },
     { h: 'Allies / enemies near', f: d => d.allies + ' / ' + d.enemies, cls: d => d.caught ? 'c-bad' : '' },
     { h: 'HP% 20/10/5/2s before', f: d => d.hp.join(' / ') },
     { h: 'Respawn', f: d => d.respawn + 's' },
     { h: 'Early', f: d => d.early ? 'yes' : '' }], M.deaths);
   tbl($('t-fights'), [{ h: 'Time', f: f => mm(f.t0) + '-' + mm(f.t1), l: 1 }, { h: 'Result', f: f => f.res.toUpperCase(), cls: f => f.res == 'won' ? 'c-good' : (f.res == 'lost' ? 'c-bad' : '') },
-    { h: 'Deaths (enemy / ally)', f: f => f.theirs + ' / ' + f.ours }, { h: 'First death', f: f => f.first + (f.first_us ? ' (ally)' : ' (enemy)'), l: 1 }, { h: 'You', f: f => f.pres + (f.kill ? ' + kill' : ''), l: 1 }], M.fights);
-  tbl($('t-board'), [{ h: 'Hero', f: p => p.hero + (p.me ? ' (you)' : ''), l: 1 }, { h: 'Team', f: p => p.ally ? 'ally' : 'enemy', l: 1 }, { h: 'Lane', f: p => p.lane, l: 1 }, { h: 'K/D/A', f: p => p.k + '/' + p.d + '/' + p.a },
-    { h: 'Net worth', f: p => num(p.nw) }, { h: 'Last hits', f: p => p.lh }, { h: 'Hero dmg', f: p => num(p.dmg) }, { h: 'Dmg taken', f: p => num(p.taken) }, { h: 'Healing', f: p => num(p.heal) }, { h: 'Lvl', f: p => p.lvl }], M.board, { rowClass: p => p.me ? 'me' : '' });
+    { h: 'Deaths (enemy / ally)', f: f => f.theirs + ' / ' + f.ours }, { h: 'First death', f: f => hn(f.first) + (f.first_us ? ' (ally)' : ' (enemy)'), l: 1 }, { h: 'You', f: f => f.pres + (f.kill ? ' + kill' : ''), l: 1 }], M.fights);
   tbl($('t-items'), [{ h: 'Time', f: i => mm(i.t), l: 1 }, { h: 'Item', f: i => i.name, l: 1 }, { h: 'Tier / slot', f: i => i.slot == 'ability' ? 'ability' : 'T' + i.tier + ' ' + i.slot, l: 1 }, { h: 'Sold', f: i => i.sold ? mm(i.sold) : '' }, { h: 'Notes', f: i => i.tags.join(', '), l: 1 }], M.items.filter(i => i.slot !== 'ability'));
   tbl($('t-obj'), [{ h: 'Time', f: o => mm(o.t), l: 1 }, { h: 'Objective', f: o => o.name, l: 1 }, { h: 'Result', f: o => o.mine ? 'destroyed by your team' : 'lost', l: 1 }], M.objectives);
   const b = M.bench;
@@ -386,12 +401,12 @@ function renderOverview(O) {
 
   // Habit-by-game grid: red = flagged that game, green = fine, grey = not measurable.
   const HID = T.map(t => t.id);
-  tbl($('matrix'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.calib ? '#' + g.calib : g.id}</a>`, l: 1 }, { h: 'Result', f: g => `<span class="pill ${g.win ? 'win' : 'loss'}">${g.win ? 'W' : 'L'}</span>` }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'KDA', f: g => g.kda.join('/') },
+  tbl($('matrix'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.calib ? '#' + g.calib : g.id}</a>`, l: 1 }, { h: 'Result', f: g => `<span class="pill ${g.win ? 'win' : 'loss'}">${g.win ? 'W' : 'L'}</span>` }, { h: 'Hero', f: g => hn(g.hero), l: 1 }, { h: 'KDA', f: g => g.kda.join('/') },
     ...HID.map(id => ({ h: HABIT_SHORT[id], f: g => { const r = g.habits[id]; return r.flag ? '&#10005;' : (r.value == null ? '&ndash;' : '&#10003;'); }, cls: g => { const r = g.habits[id]; return r.flag ? 'c-bad' : (r.value == null ? 'c-na' : 'c-good'); } })),
     { h: 'Flags', f: g => HID.filter(id => g.habits[id].flag).length }], G).classList.add('compact');
 
   // games table
-  tbl($('games'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.id}</a>`, l: 1 }, { h: 'Hero', f: g => g.hero, l: 1 }, { h: 'Lane', f: g => g.lane, l: 1 }, { h: 'Result', f: g => `${g.win ? 'W' : 'L'} ${mm(g.dur)}` }, { h: 'KDA', f: g => g.kda.join('/') },
+  tbl($('games'), [{ h: 'Game', f: g => `<a href="matches/${g.id}.html">${g.id}</a>`, l: 1 }, { h: 'Hero', f: g => hn(g.hero), l: 1 }, { h: 'Lane', f: g => g.lane, l: 1 }, { h: 'Result', f: g => `${g.win ? 'W' : 'L'} ${mm(g.dur)}` }, { h: 'KDA', f: g => g.kda.join('/') },
     { h: 'Deaths vs mates', f: g => g.kpi.deaths + ' vs ' + g.kpi.mate_deaths.toFixed(1) }, { h: 'Souls/min', f: g => num(g.kpi.spm) }, { h: 'Mid boss', f: g => g.kpi.midboss_mine + '/' + g.kpi.midboss_total },
     ...(O.community ? [{ h: 'Match rank', f: g => g.sl ? g.sl.mvp + '/12' : '-' }, { h: 'Grade', f: g => g.sl ? g.sl.grade : '-' }, { h: 'MMR', f: g => g.sl && g.sl.mmr != null ? (g.sl.mmr > 0 ? '+' : '') + g.sl.mmr : '-' }] : [])], G);
   if (O.community) communityPanel($('community'), O.community);
@@ -401,7 +416,7 @@ function renderOverview(O) {
   $('seasonmap-note').textContent = `${ed} of ${O.deaths.length} deaths (${pct(ed / Math.max(1, O.deaths.length))}) happened in enemy territory; hover a dot for the game, time and killer.`;
   // by hero
   const by = {}; G.forEach(g => { (by[g.hero] = by[g.hero] || []).push(g); });
-  tbl($('heroes'), [{ h: 'Hero', f: r => r[0], l: 1 }, { h: 'Games', f: r => r[1].length }, { h: 'W-L', f: r => r[1].filter(g => g.win).length + '-' + r[1].filter(g => !g.win).length },
+  tbl($('heroes'), [{ h: 'Hero', f: r => hn(r[0]), l: 1 }, { h: 'Games', f: r => r[1].length }, { h: 'W-L', f: r => r[1].filter(g => g.win).length + '-' + r[1].filter(g => !g.win).length },
     { h: 'Avg KDA', f: r => ['0', '1', '2'].map(i => (r[1].reduce((a, g) => a + g.kda[+i], 0) / r[1].length).toFixed(1)).join('/') }, { h: 'Avg souls/min', f: r => num(r[1].reduce((a, g) => a + g.kpi.spm, 0) / r[1].length) }], Object.entries(by).sort((a, b) => b[1].length - a[1].length));
   // team-level
   const mb = G.filter(g => g.kpi.midboss_total);

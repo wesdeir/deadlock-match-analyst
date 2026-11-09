@@ -121,3 +121,38 @@ def ensure_map_image(dest: Path):
     except Exception as e:  # the map is cosmetic
         print("map image not downloaded:", e)
         return False
+
+
+def ensure_hero_icons(dest_dir: Path):
+    """Download each hero's small portrait and card art into docs/assets/heroes/ (committed, so the site works offline)
+    and write heroes.js mapping hero name -> {icon, card}. Existing files are skipped, so this is cheap to re-run."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    table = heroes_table()
+    rows = table if isinstance(table, list) else list(table.values())
+    out = {}
+    for h in rows:
+        img, name = h.get("images") or {}, h.get("name")
+        if not name or h.get("disabled") or h.get("player_selectable") is False:
+            continue
+        entry = {}
+        for key, field in (("icon", "icon_image_small_webp"), ("card", "icon_hero_card_webp")):
+            url = img.get(field)
+            if not url:
+                continue
+            fn = f"{h['class_name'].replace('hero_', '')}_{key}.webp"
+            path = dest_dir / fn
+            if not path.exists():
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+                    with urllib.request.urlopen(req, timeout=60) as r:
+                        path.write_bytes(r.read())
+                    time.sleep(0.2)
+                except Exception as e:  # icons are cosmetic
+                    print("hero image not downloaded:", url, e)
+                    continue
+            entry[key] = "assets/heroes/" + fn
+        if entry:
+            out[name] = entry
+    # a .js file (not .json) so pages also work when opened straight from disk, where fetch() is blocked
+    (dest_dir.parent / "heroes.js").write_text("window.HEROES=" + json.dumps(out) + ";\n", encoding="utf-8")
+    return out

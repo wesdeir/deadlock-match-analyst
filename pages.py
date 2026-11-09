@@ -16,7 +16,7 @@ def _asset_version():
 # Shared page shell. {base} is the relative path back to docs/ ('' for index.html, '../' for match pages).
 HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="{base}assets/lib.css?v={v}"></head><body><header id="nav"></header><main>"""
-TAIL = """</main><script src="{base}assets/lib.js?v={v}"></script><script>window.ASSET_BASE="{base}";{script}</script></body></html>"""
+TAIL = """</main><script src="{base}assets/heroes.js?v={v}"></script><script src="{base}assets/lib.js?v={v}"></script><script>window.ASSET_BASE="{base}";{script}</script></body></html>"""
 
 
 def _dump(o):
@@ -32,6 +32,7 @@ MATCH_BODY = """
 <p class="sub">The biggest things only: what to work on, what went well, what to try next game. "Recurring" = also one of your current focus areas on the overview.</p>
 <div id="points"></div></aside>
 <div class="stage">
+<section id="s-board"><h2>The teams</h2><div class="teams" id="teams"></div></section>
 <section id="s-timeline"><h2>What happened</h2><p class="sub">Team net-worth gap over time. Fights are shaded (green = your team won, red = lost); below: your deaths and kills, objectives, mid boss and resist-item buys. Hover for details.</p>
 <div class="card" id="c-timeline"></div></section>
 <section id="s-lane"><h2>Lane</h2><div class="cols"><div class="card" id="c-lane1"></div><div class="card" id="c-lane2"></div></div></section>
@@ -44,12 +45,11 @@ MATCH_BODY = """
 <section id="s-items"><h2>Items</h2><div class="card" id="c-items"></div></section>
 <section id="s-economy"><h2>Economy</h2><div class="cols"><div class="card" id="c-souls"></div><div class="card"><h3>Versus everyone (all-rank averages for your hero)</h3><div id="bench"></div></div></div></section>
 <section id="s-data"><h2>All the data</h2>
-<details><summary>Scoreboard (all 12 players)</summary><div class="card" id="t-board"></div></details>
 <details><summary>Your item purchases</summary><div class="card" id="t-items"></div></details>
 <details><summary>Objectives</summary><div class="card" id="t-obj"></div></details></section>
 </div></div>
 """
-MATCH_CHIPS = [["s-points", "Key points"], ["s-timeline", "Timeline"], ["s-lane", "Lane"], ["s-deaths", "Deaths"], ["s-fights", "Fights"],
+MATCH_CHIPS = [["s-points", "Key points"], ["s-board", "Teams"], ["s-timeline", "Timeline"], ["s-lane", "Lane"], ["s-deaths", "Deaths"], ["s-fights", "Fights"],
                ["s-damage", "Damage"], ["s-items", "Items"], ["s-economy", "Economy"], ["s-data", "All data"]]
 
 OVERVIEW_BODY = """

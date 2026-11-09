@@ -59,6 +59,7 @@ def main():
     if not records:
         sys.exit("No season matches with metadata yet.")
     api.ensure_map_image(DOCS / "assets" / "map.png")  # cosmetic; pages fall back to the remote image
+    api.ensure_hero_icons(DOCS / "assets" / "heroes")  # hero portraits for the pages (cheap once downloaded)
     ov = insights.overview(records)
     # The top-3 focus habits get a 'recurring' tag on each match page.
     recurring = {f["id"] for f in ov["focus"][:3]}
