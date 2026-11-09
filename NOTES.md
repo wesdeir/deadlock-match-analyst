@@ -27,7 +27,7 @@ history; game 8 not played yet). The calibration run is 8 games (ranked-seasons 
 - Lanes are 2v2 (two players share an `assigned_lane` per team).
 
 ## Findings so far (see reports for detail)
-- Calibration 1-5 (W-L): 1-5 incl. game 7. Being behind in lane at 9:00 is typical for Celeste duos (about -350 mean).
+- Calibration record 1-5 (W-L) over games 1,2,3,4,6,7. Being behind in lane at 9:00 is typical for Celeste duos (about -350 mean).
   Game 3 was the real outlier lane (about -1.6 sd). Game 7 was even in lane and +2.5k at 15:00 yet lost: late-game problem.
 - Several fights where I was the first to die (game 1: 5, game 4: 4).
 
