@@ -9,6 +9,7 @@ Usage:
 import argparse
 import collections
 import json
+import os
 import math
 import re
 import sys
@@ -18,8 +19,8 @@ from pathlib import Path
 import api
 
 HERE = Path(__file__).parent
-ACCOUNT_ID = 473873958
-MY_HERO = 81
+ACCOUNT_ID = int(os.environ.get("DEADLOCK_ACCOUNT_ID", 473873958))  # SteamID3; override via env var
+MY_HERO = int(os.environ.get("DEADLOCK_MAIN_HERO", 81))  # hero_id of the main hero (81 = Celeste)
 RANKED = 4
 AGG = {"Bullet", "Ability", "Melee", "UnknownAbility", "Misc"}  # aggregate rows in the damage matrix
 OUT_DIR = HERE / "reports"

@@ -15,7 +15,15 @@ python refresh.py                       # refresh history, fetch missing matches
 python refresh.py --gamedata            # also re-download the game-file dumps (hash-verified) -> gamedata.json
 python refresh.py --benchmarks          # also re-download global benchmark tables
 ```
-Account id and main hero are constants at the top of `analyst.py` (`ACCOUNT_ID`, `MY_HERO`).
+## Using it for your own account
+Set your SteamID3 (the number in your Steam friend code / the part of your profile id, e.g. from the `account_id` in
+match history) and main hero id (see `gamedata.json` or `/v1/assets/heroes`):
+```bash
+# PowerShell
+$env:DEADLOCK_ACCOUNT_ID = "123456789"; $env:DEADLOCK_MAIN_HERO = "81"; python analyst.py
+```
+The defaults are the author's own account.
+
 
 ## Files
 | file | purpose |
@@ -30,3 +38,12 @@ Account id and main hero are constants at the top of `analyst.py` (`ACCOUNT_ID`,
 | `NOTES.md` | decoded data formats, findings, open questions, next steps - **read this to pick up** |
 
 `cache/`, `data/gametracking/` and `reports/` are git-ignored; they are recreated by the scripts.
+
+## Credits, data sources, and disclaimer
+- Match data: the community [Deadlock API](https://deadlock-api.com). Please respect its rate limits (see `NOTES.md`);
+  the client here is deliberately slow and caches everything.
+- Game data (hero/item names, item values, enum names): text dumps from
+  [SteamTracking/GameTracking-Deadlock](https://github.com/SteamTracking/GameTracking-Deadlock), downloaded on demand with
+  hash verification and never executed. `gamedata.json` is a small derived table of names and numbers.
+- This is an unofficial fan project, not affiliated with or endorsed by Valve. Deadlock and related names are Valve's.
+- Licensed under the [MIT License](LICENSE).
