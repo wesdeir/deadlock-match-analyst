@@ -1,6 +1,6 @@
 """One command to bring everything up to date and rebuild the reports.
 
-  python refresh.py             # history + any missing calibration metadata (stops politely if rate limited) + reports
+  python refresh.py             # history + newest missing season matches (stops politely if rate limited) + all pages/reports
   python refresh.py --gamedata  # also re-download the GameTracking text dumps (hash-verified) and rebuild gamedata.json
 
 Rate limits: the per-match endpoint allows only a few requests per hour per IP, so this fetches at most
@@ -59,17 +59,17 @@ def main():
     except api.RateLimited as e:
         print("History rate limited:", e)
         hist = api.match_history(analyst.ACCOUNT_ID)
+    import kpis
+    season = kpis.season_matches(hist)
     if args.benchmarks:
         import benchmarks
-        for hid in sorted({m["hero_id"] for m in analyst.calibration_matches(hist)}):
+        for hid in sorted({m["hero_id"] for m in season}):
             benchmarks.hero_stats(hid, refresh=True)
             benchmarks.perf_curve(hid, refresh=True)
-    cal = analyst.calibration_matches(hist)
-    print("calibration counters:", sorted(m["ranked_calibration_match"] for m in cal))
+    print("season ranked matches:", len(season))
     fetched = 0
-    for m in cal:
-        path = api._cache_path(f"{api.API}/v1/matches/{m['match_id']}/metadata")
-        if path.exists() or fetched >= args.max_fetch:
+    for m in reversed(season):  # newest first: the match you just played matters most
+        if api.cached_match_metadata(m["match_id"]) is not None or fetched >= args.max_fetch:
             continue
         try:
             api.match_metadata(m["match_id"])
@@ -77,8 +77,8 @@ def main():
         except api.RateLimited as e:
             print("Stopping:", e)
             break
-    for flags in ([], ["--brief"]):
-        subprocess.run([sys.executable, str(HERE / "analyst.py"), "--calibration", *flags], check=False)
+    for cmd in (["analyze.py", "all"], ["analyst.py", "--calibration"], ["analyst.py", "--calibration", "--brief"]):
+        subprocess.run([sys.executable, str(HERE / cmd[0]), *cmd[1:]], check=False)
 
 
 if __name__ == "__main__":

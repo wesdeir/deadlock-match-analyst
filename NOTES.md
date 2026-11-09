@@ -23,7 +23,7 @@ history; game 8 not played yet). The calibration run is 8 games (ranked-seasons 
 - Objective ids = `ECitadelTeamObjective` (names via the protobuf); the objective's `team` is its OWNER (losing team's
   Core/Titan falls). Lane ids: `generic-data.lane_info` (1 York, 4 Broadway, 6 Greenwich).
 - Stat snapshots are not time-aligned across players; curves are linearly interpolated.
-- Item tags (bullet/spirit resist, anti-heal) come from non-zero property values in `abilities.vdata` (base values only; conditional bonuses not modelled). 37 of 148 items are flagged disabled in the current patch.
+- Item tags (bullet/spirit resist, anti-heal) come from non-zero property values in `abilities.vdata` (base values only; conditional bonuses not modelled). 37 of 148 items are flagged disabled in the current patch. `NonPlayerBulletResist` (e.g. Monster Rounds) is vs creeps only and is NOT counted as player resist.
 - Lanes are 2v2 (two players share an `assigned_lane` per team).
 
 ## Findings so far (see reports for detail)
@@ -41,3 +41,23 @@ history; game 8 not played yet). The calibration run is 8 games (ranked-seasons 
 
 ## Repo contents
 `cache/` is committed on purpose (public API data incl. other players' account ids, same visibility as their public profiles) so reports can be rebuilt without re-fetching, which matters because of the 3/hour per-match limit.
+
+## Dashboards and habit tracking (added 2026-11-08)
+Goal: analyse one match at a time, and now and then pick a few habits to work on and check whether they move.
+- Season = ranked matches from the first game of the latest calibration run on (`kpis.season_matches`). Ordered by match_id.
+- Per-match record: `data/matches/<id>.json` (schema version in `kpis.SCHEMA`; bump it to force a rebuild).
+- Habits (`insights.HABITS`, thresholds are judgment calls - tune them): deaths vs teammates (flag >= +2), lane deaths
+  before 10:00 (>= 3), first-to-die in fights (>= 3 and >= teammates + 1.5), damage-weighted resist at 20:00 (< 10%,
+  an *experiment*, target 15%+), first tier-3 item vs enemy average (>= 150s later), lane vs a typical duo (<= -1 sd),
+  final net worth vs the hero average (<= -0.8 sd).
+- Checked and deliberately NOT habits: dying alone/outnumbered ("caught") and kill participation - they were about the
+  same for me and my teammates in the same games, so they are context on the match page only.
+- Trends: baseline = first b season games vs latest b (b = 5 when >= 10 games, n//2 when 6-9, else "need more games");
+  verdicts are labelled tentative below 10 games. Win rate is context only.
+- Preview tip: Claude's built-in preview pane shows local files as static snapshots (no CSS/JS), so test the pages over
+  HTTP: `python -m http.server 8765 --directory docs`.
+
+## Current focus (first overview, 6 games, 1-5)
+1. Defensive items late (flagged 6/6; experiment: resist matched to the damage taken by ~15:00).
+2. Dying more than teammates (games 1 and 3). 3. Slow first tier-3 (games 1 and 7).
+Team-level: the enemy claimed every mid boss in all 5 losses; my team claimed both in the one win.

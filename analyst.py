@@ -70,7 +70,7 @@ class Names:
                     self.items[int(k)] = v
 
     TAGS = {  # item property -> tag (heuristic: property present on the item definition)
-        "bullet_resist": ("BulletResist", "BulletResistBelowThreshold", "BulletResistPerStack", "NonPlayerBulletResist"),
+        "bullet_resist": ("BulletResist", "BulletResistBelowThreshold", "BulletResistPerStack"),  # NonPlayerBulletResist = vs creeps only, excluded
         "spirit_resist": ("TechResist", "TechArmorDamageReduction", "TechResistBelowThreshold", "SpiritDamageReductionProc"),
         "anti_heal": ("HealAmpReceivePenaltyPercent", "HealAmpRegenPenaltyPercent"),
         "debuff_resist": ("StatusResistancePercent", "DebuffDuration"),
@@ -600,12 +600,6 @@ def calibration_report(history, args):
     out = OUT_DIR / ("calibration_report_brief.md" if BRIEF else "calibration_report.md")
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {out} ({out.stat().st_size} bytes); matches {len(cal)}, missing metadata {missing}")
-    if not BRIEF:
-        try:
-            import viz
-            viz.build()
-        except Exception as e:  # the dashboard is a bonus; never fail the report because of it
-            print("dashboard skipped:", e)
 
 
 # ---------------------------------------------------------------- main

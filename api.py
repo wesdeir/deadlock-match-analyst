@@ -84,3 +84,9 @@ def heroes_table(refresh=False):
 
 def generic_data(refresh=False):
     return get_json(f"{API}/v1/assets/generic-data", refresh)
+
+
+def cached_match_metadata(match_id: int):
+    """Match metadata from the disk cache only (never touches the network); None if not cached."""
+    path = _cache_path(f"{API}/v1/matches/{match_id}/metadata")
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
