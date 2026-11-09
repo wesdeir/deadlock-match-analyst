@@ -38,3 +38,6 @@ history; game 8 not played yet). The calibration run is 8 games (ranked-seasons 
   patch notes (`/v1/patches`), death heatmaps (`kill-death-stats`), SQL endpoint (`/v1/sql`).
 - Fight detection is a simple death-cluster heuristic (deaths <=20s apart); "unspent gold minutes" meaning is inferred.
 - `ACCOUNT_ID` is hard-coded in `analyst.py`.
+
+## Repo contents
+`cache/` is committed on purpose (public API data incl. other players' account ids, same visibility as their public profiles) so reports can be rebuilt without re-fetching, which matters because of the 3/hour per-match limit.

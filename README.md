@@ -37,7 +37,7 @@ The defaults are the author's own account.
 | `names.json` | manual name overrides / item tags |
 | `NOTES.md` | decoded data formats, findings, open questions, next steps - **read this to pick up** |
 
-`cache/`, `data/gametracking/` and `reports/` are git-ignored; they are recreated by the scripts.
+`cache/` (API responses, so you can run offline and skip the strict rate limit) is committed. `data/gametracking/` and `reports/` are git-ignored and recreated by the scripts.
 
 ## Credits, data sources, and disclaimer
 - Match data: the community [Deadlock API](https://deadlock-api.com). Please respect its rate limits (see `NOTES.md`);

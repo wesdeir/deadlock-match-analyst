@@ -1,5 +1,3 @@
-# API responses (large, contain other players' data) - re-created by running the scripts
-cache/
 # Third-party game-file dumps - re-downloaded by `python refresh.py --gamedata`
 data/gametracking/
 # Generated reports (personal) - rebuilt by analyst.py
