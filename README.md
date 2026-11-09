@@ -11,6 +11,7 @@ python analyst.py                       # latest ranked match -> reports/report_
 python analyst.py --match 133922932     # a specific match
 python analyst.py --calibration         # this season's calibration run, one combined report (+ scorecard)
 python analyst.py --calibration --brief # shorter version
+python viz.py                           # rebuild docs/dashboard.html (also done by --calibration)
 python refresh.py                       # refresh history, fetch missing matches (rate-limit safe), rebuild reports
 python refresh.py --gamedata            # also re-download the game-file dumps (hash-verified) -> gamedata.json
 python refresh.py --benchmarks          # also re-download global benchmark tables
@@ -33,6 +34,7 @@ The defaults are the author's own account.
 | `extras.py` | economy, fights, enemy items, HP before death, named objectives, per-game scorecard |
 | `benchmarks.py` | compares a game with all ranked games of that hero (hero stats, performance curve, lane curve) |
 | `gamedata.py` | builds `gamedata.json` (hero/item names, tiers, item property values) from GameTracking-Deadlock text dumps |
+| `viz.py` | builds `docs/dashboard.html`, a self-contained offline dashboard (scorecard, team gap, lane vs typical, fights, damage mix, souls, death map) |
 | `refresh.py` | one-command update |
 | `names.json` | manual name overrides / item tags |
 | `NOTES.md` | decoded data formats, findings, open questions, next steps - **read this to pick up** |
